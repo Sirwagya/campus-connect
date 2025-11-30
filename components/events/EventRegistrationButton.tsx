@@ -25,15 +25,34 @@ export function EventRegistrationButton({
     try {
       const res = await fetch(`/api/events/${eventId}/register`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          participationType: "solo",
+          formData: {},
+        }),
       });
-      const data = await res.json();
+
+      // Only try to parse JSON if we have a response body
+      let data = null;
+      const text = await res.text();
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error("Failed to parse response:", e);
+        }
+      }
+
       if (res.ok) {
         router.refresh();
       } else {
-        alert(data.error || "Failed to register");
+        alert(data?.error || "Failed to register");
       }
     } catch (error) {
       console.error("Registration error:", error);
+      alert("An error occurred during registration");
     } finally {
       setIsLoading(false);
     }

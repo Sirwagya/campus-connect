@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Plus, Trash2, Users, Search, Loader2, Check } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { useDebounce } from "@/hooks/use-debounce"; // Assuming this hook exists or I'll implement a simple one
 
@@ -164,11 +164,15 @@ export function TeamManager({
                     className="w-full flex items-center gap-3 p-3 hover:bg-accent text-left transition-colors"
                     onClick={() => addMember(user)}
                   >
-                    <Avatar
-                      className="h-8 w-8"
-                      src={user.avatar_url}
-                      fallback={user.full_name?.[0]}
-                    />
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={user.avatar_url}
+                        alt={user.full_name || "User"}
+                      />
+                      <AvatarFallback>
+                        {user.full_name?.[0] || "?"}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1">
                       <div className="font-medium text-sm">
                         {user.full_name || user.name}
@@ -216,11 +220,13 @@ export function TeamManager({
               key={index}
               className="flex items-center gap-3 p-3 bg-background rounded-md border"
             >
-              <Avatar
-                className="h-8 w-8"
-                src={member.avatar_url}
-                fallback={member.name?.[0]}
-              />
+              <Avatar className="h-8 w-8">
+                <AvatarImage
+                  src={member.avatar_url}
+                  alt={member.name || "User"}
+                />
+                <AvatarFallback>{member.name?.[0] || "?"}</AvatarFallback>
+              </Avatar>
               <div className="flex-1">
                 <div className="font-medium text-sm">{member.name}</div>
                 <div className="text-xs text-muted-foreground">

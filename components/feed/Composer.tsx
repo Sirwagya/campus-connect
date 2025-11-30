@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { ImagePlus, X, Loader2, Send } from "lucide-react";
@@ -121,11 +121,10 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
   return (
     <div className="mb-8 rounded-2xl bg-[#18181B]/50 backdrop-blur-sm border border-white/5 p-5 shadow-lg transition-all focus-within:ring-1 focus-within:ring-[#a970ff]/50 focus-within:bg-[#18181B]">
       <div className="flex gap-4">
-        <Avatar
-          src={user.avatar_url}
-          fallback={user.name?.[0] || user.email?.[0]}
-          className="h-11 w-11 border border-white/10 shadow-sm"
-        />
+        <Avatar className="h-11 w-11 border border-white/10 shadow-sm">
+          <AvatarImage src={user.avatar_url} alt={user.name || "User"} />
+          <AvatarFallback>{user.name?.[0] || user.email?.[0] || "?"}</AvatarFallback>
+        </Avatar>
         <div className="flex-1 space-y-4">
           <Textarea
             placeholder="What's happening?"

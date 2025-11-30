@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Loader2, Send } from "lucide-react";
@@ -75,11 +75,15 @@ export function CommentList({
     <div className="pt-4 border-t mt-4 space-y-4">
       {/* Comment Input */}
       <div className="flex gap-3">
-        <Avatar
-          src={currentUser?.avatar_url}
-          fallback={currentUser?.name?.[0] || currentUser?.email?.[0]}
-          className="h-8 w-8"
-        />
+        <Avatar className="h-8 w-8">
+          <AvatarImage
+            src={currentUser?.avatar_url}
+            alt={currentUser?.name || "User"}
+          />
+          <AvatarFallback>
+            {currentUser?.name?.[0] || currentUser?.email?.[0] || "?"}
+          </AvatarFallback>
+        </Avatar>
         <div className="flex-1 flex gap-2">
           <Textarea
             value={newComment}
@@ -111,11 +115,15 @@ export function CommentList({
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
               <Link href={`/profile/${comment.user_id}`}>
-                <Avatar
-                  src={comment.user?.avatar_url}
-                  fallback={comment.user?.name?.[0] || comment.user?.email?.[0]}
-                  className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity"
-                />
+                <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity">
+                  <AvatarImage
+                    src={comment.user?.avatar_url}
+                    alt={comment.user?.name || "User"}
+                  />
+                  <AvatarFallback>
+                    {comment.user?.name?.[0] || comment.user?.email?.[0] || "?"}
+                  </AvatarFallback>
+                </Avatar>
               </Link>
               <div className="flex-1 bg-muted/50 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">

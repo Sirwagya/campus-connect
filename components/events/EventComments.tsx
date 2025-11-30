@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { EventComment } from "@/types/events";
@@ -74,11 +74,15 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
 
       {/* Comment Form */}
       <div className="flex gap-4">
-        <Avatar
-          src={currentUser?.user_metadata?.avatar_url}
-          fallback={currentUser?.user_metadata?.full_name?.[0]}
-          className="h-10 w-10 border border-[#27272a]"
-        />
+        <Avatar className="h-10 w-10 border border-[#27272a]">
+          <AvatarImage
+            src={currentUser?.user_metadata?.avatar_url}
+            alt={currentUser?.user_metadata?.full_name || "User"}
+          />
+          <AvatarFallback>
+            {currentUser?.user_metadata?.full_name?.[0] || "?"}
+          </AvatarFallback>
+        </Avatar>
         <div className="flex-1 relative">
           <div
             className={cn(
@@ -140,11 +144,15 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
                   href={`/profile/${comment.user_id}`}
                   className="relative z-10"
                 >
-                  <Avatar
-                    src={comment.user?.avatar_url}
-                    fallback={comment.user?.name?.[0]}
-                    className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all border border-[#27272a] bg-[#131313]"
-                  />
+                  <Avatar className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all border border-[#27272a] bg-[#131313]">
+                    <AvatarImage
+                      src={comment.user?.avatar_url}
+                      alt={comment.user?.name || "User"}
+                    />
+                    <AvatarFallback>
+                      {comment.user?.name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
                 </Link>
                 <div className="flex-1">
                   <div className="border border-[#27272a] rounded-xl bg-[#131313] overflow-hidden group-hover:border-[#3f3f46] transition-colors">

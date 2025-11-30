@@ -23,7 +23,7 @@ import {
 import Link from "next/link";
 import { getDashboardData } from "./actions/dashboard";
 import { format } from "date-fns";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 
 export default async function Home() {
   const { featuredEvents, announcements, trendingFeed, userRole } =
@@ -209,11 +209,15 @@ export default async function Home() {
                   >
                     <div className="flex items-start gap-3">
                       <Link href={`/profile/${post.user?.id}`}>
-                        <Avatar
-                          className="h-8 w-8 border border-white/10 cursor-pointer"
-                          src={post.user?.avatar_url}
-                          fallback={post.user?.email?.[0]}
-                        />
+                        <Avatar className="h-8 w-8 border border-white/10 cursor-pointer">
+                          <AvatarImage
+                            src={post.user?.avatar_url}
+                            alt={post.user?.email || "User"}
+                          />
+                          <AvatarFallback>
+                            {post.user?.email?.[0] || "?"}
+                          </AvatarFallback>
+                        </Avatar>
                       </Link>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between mb-1">

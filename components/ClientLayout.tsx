@@ -25,10 +25,10 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex min-h-screen flex-col md:flex-row bg-black text-white">
       <Sidebar />
-      <main className="flex-1 pb-16 md:pb-0 md:pl-64">
-        <div className="container mx-auto max-w-5xl p-4 md:p-8">{children}</div>
+      <main className="flex-1 w-full min-w-0 pb-16 md:pb-0">
+        <div className="container mx-auto max-w-7xl p-4 md:p-8">{children}</div>
       </main>
       <BottomNav />
     </div>

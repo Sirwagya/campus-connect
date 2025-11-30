@@ -1,0 +1,60 @@
+"use client";
+
+import { Button } from "@/components/ui/Button";
+import { Inbox, Star, Send, File, AlertCircle, Bell } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface AlertSidebarProps {
+  activeTab: string;
+  onTabChange: (tab: any) => void;
+  unreadCount?: number;
+  notificationCount?: number;
+}
+
+export function AlertSidebar({
+  activeTab,
+  onTabChange,
+  unreadCount = 0,
+  notificationCount = 0,
+}: AlertSidebarProps) {
+  const items = [
+    { id: "all", label: "Inbox", icon: Inbox, count: unreadCount },
+    { id: "starred", label: "Starred", icon: Star },
+    {
+      id: "notifications",
+      label: "Notifications",
+      icon: Bell,
+      count: notificationCount,
+      color: "text-red-400",
+    },
+    { id: "sent", label: "Sent", icon: Send },
+    { id: "drafts", label: "Drafts", icon: File },
+    { id: "spam", label: "Spam", icon: AlertCircle },
+  ];
+
+  return (
+    <div className="w-64 flex-shrink-0 hidden md:block pr-4">
+      <div className="space-y-1">
+        {items.map((item) => (
+          <Button
+            key={item.id}
+            variant="ghost"
+            className={cn(
+              "w-full justify-start rounded-r-full rounded-l-none pl-6 font-medium h-10",
+              activeTab === item.id
+                ? "bg-[#2d1f38] text-[#d2a8ff]" // Active state: dark purple bg, light purple text
+                : "text-gray-400 hover:text-white hover:bg-white/5"
+            )}
+            onClick={() => onTabChange(item.id)}
+          >
+            <item.icon className={cn("mr-3 h-4 w-4", item.color)} />
+            <span className="flex-1 text-left">{item.label}</span>
+            {item.count ? (
+              <span className="text-xs font-bold ml-2">{item.count}</span>
+            ) : null}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}

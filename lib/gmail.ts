@@ -90,6 +90,22 @@ export async function markAsRead(userId: string, messageId: string) {
 }
 
 /**
+ * Toggle star status
+ */
+export async function toggleStar(userId: string, messageId: string, isStarred: boolean) {
+  const gmail = await getGmailClient(userId);
+
+  await gmail.users.messages.modify({
+    userId: 'me',
+    id: messageId,
+    requestBody: {
+      addLabelIds: isStarred ? ['STARRED'] : [],
+      removeLabelIds: isStarred ? [] : ['STARRED'],
+    },
+  });
+}
+
+/**
  * Search messages by query
  */
 export async function searchMessages(

@@ -4,7 +4,8 @@ import { EventRegistrationModal } from "@/components/events/EventRegistrationMod
 import { EventComments } from "@/components/events/EventComments";
 import { EventReactions } from "@/components/events/EventReactions";
 import { AddToCalendarButton } from "@/components/events/AddToCalendarButton";
-import { Calendar, Clock, MapPin, Share2 } from "lucide-react";
+import { EventRegistrationButton } from "@/components/events/EventRegistrationButton";
+import { Calendar, Clock, MapPin, Share2, Users } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { notFound } from "next/navigation";
 
@@ -47,60 +48,101 @@ export default async function EventDetailPage({
   const isFull = event.capacity && event.participants_count >= event.capacity;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-[#000000] text-white pb-20">
       <EventBanner event={event} />
 
-      <div className="container mx-auto px-4 -mt-8 relative z-20">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="container max-w-[1280px] mx-auto px-6 md:px-10 -mt-12 relative z-20">
+        <div className="grid lg:grid-cols-[1fr_360px] gap-10">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-card rounded-xl p-6 shadow-sm border space-y-6">
-              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center border-b pb-6">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold">Event Details</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Hosted by Campus Connect
-                  </p>
+          <div className="space-y-10">
+            {/* Description Card */}
+            <div className="bg-[#131313] rounded-2xl p-8 border border-[#1f1f1f] shadow-xl backdrop-blur-sm">
+              <div className="flex flex-col sm:flex-row gap-6 justify-between items-start sm:items-center border-b border-[#1f1f1f] pb-8 mb-8">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold tracking-tight">
+                    About Event
+                  </h2>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>Hosted by Campus Connect</span>
+                  </div>
                 </div>
-                {user && (
-                  <EventRegistrationModal
-                    eventId={event.id}
-                    isRegistered={isRegistered}
-                    isFull={!!isFull}
-                    participationType={event.participation_type || "solo"}
-                    minTeamSize={event.min_team_size || 1}
-                    maxTeamSize={event.max_team_size || 5}
-                  />
-                )}
               </div>
 
-              <div className="prose dark:prose-invert max-w-none">
-                <p className="whitespace-pre-wrap">{event.description}</p>
+              <div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-white prose-strong:text-white">
+                <p className="whitespace-pre-wrap leading-relaxed text-lg">
+                  {event.description}
+                </p>
               </div>
             </div>
 
-            <div className="bg-card rounded-xl p-6 shadow-sm border space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Reactions</h3>
-              </div>
+            {/* Reactions Section */}
+            <div className="bg-[#131313] rounded-2xl p-8 border border-[#1f1f1f] shadow-sm">
+              <h3 className="text-xl font-bold mb-6">Reactions</h3>
               <EventReactions eventId={event.id} currentUser={user} />
             </div>
 
-            <div className="bg-card rounded-xl p-6 shadow-sm border">
+            {/* Comments Section */}
+            <div className="bg-[#131313] rounded-2xl p-8 border border-[#1f1f1f] shadow-sm">
               <EventComments eventId={event.id} currentUser={user} />
             </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <div className="bg-card rounded-xl p-6 shadow-sm border space-y-6 sticky top-24">
+            {/* Registration Card */}
+            <div className="bg-[#131313]/80 backdrop-blur-md rounded-2xl p-6 border border-[#1f1f1f] shadow-2xl sticky top-24 space-y-6">
               <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="bg-primary/10 p-2.5 rounded-lg">
-                    <Calendar className="h-5 w-5 text-primary" />
+                <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+                  <span>Registration Status</span>
+                  <span className={isFull ? "text-red-400" : "text-green-400"}>
+                    {isFull ? "Closed" : "Open"}
+                  </span>
+                </div>
+
+                {user ? (
+                  <EventRegistrationButton
+                    eventId={event.id}
+                    isRegistered={isRegistered}
+                    isFull={!!isFull}
+                  />
+                ) : (
+                  <Button className="w-full h-12 text-lg font-bold" disabled>
+                    Login to Register
+                  </Button>
+                )}
+
+                {event.capacity && (
+                  <div className="w-full bg-[#27272a] h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-primary h-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          (event.participants_count / event.capacity) * 100,
+                          100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                )}
+
+                {event.capacity && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    {event.capacity - event.participants_count} spots remaining
+                  </p>
+                )}
+              </div>
+
+              <div className="h-px bg-[#27272a]" />
+
+              {/* Metadata */}
+              <div className="space-y-5">
+                <div className="flex items-start gap-4 group">
+                  <div className="bg-[#18181B] p-3 rounded-xl border border-[#27272a] group-hover:border-primary/50 group-hover:text-primary transition-colors">
+                    <Calendar className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-medium">Date</p>
+                    <p className="font-bold text-white mb-0.5">Date</p>
                     <p className="text-sm text-muted-foreground">
                       {startDate.toLocaleDateString(undefined, {
                         weekday: "long",
@@ -112,12 +154,12 @@ export default async function EventDetailPage({
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="bg-primary/10 p-2.5 rounded-lg">
-                    <Clock className="h-5 w-5 text-primary" />
+                <div className="flex items-start gap-4 group">
+                  <div className="bg-[#18181B] p-3 rounded-xl border border-[#27272a] group-hover:border-primary/50 group-hover:text-primary transition-colors">
+                    <Clock className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-medium">Time</p>
+                    <p className="font-bold text-white mb-0.5">Time</p>
                     <p className="text-sm text-muted-foreground">
                       {startDate.toLocaleTimeString(undefined, {
                         hour: "numeric",
@@ -133,12 +175,12 @@ export default async function EventDetailPage({
                 </div>
 
                 {event.location && (
-                  <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2.5 rounded-lg">
-                      <MapPin className="h-5 w-5 text-primary" />
+                  <div className="flex items-start gap-4 group">
+                    <div className="bg-[#18181B] p-3 rounded-xl border border-[#27272a] group-hover:border-primary/50 group-hover:text-primary transition-colors">
+                      <MapPin className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-medium">Location</p>
+                      <p className="font-bold text-white mb-0.5">Location</p>
                       <p className="text-sm text-muted-foreground">
                         {event.location}
                       </p>
@@ -147,9 +189,12 @@ export default async function EventDetailPage({
                 )}
               </div>
 
-              <div className="pt-6 border-t space-y-3">
+              <div className="pt-4 space-y-3">
                 <AddToCalendarButton event={event} />
-                <Button variant="ghost" className="w-full">
+                <Button
+                  variant="ghost"
+                  className="w-full hover:bg-[#27272a] hover:text-white"
+                >
                   <Share2 className="mr-2 h-4 w-4" />
                   Share Event
                 </Button>

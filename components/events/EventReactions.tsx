@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { EventReaction } from "@/types/events";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 interface EventReactionsProps {
   eventId: string;
@@ -20,12 +21,6 @@ export function EventReactions({ eventId, currentUser }: EventReactionsProps) {
   useEffect(() => {
     // Fetch initial reactions (we might want a dedicated endpoint for counts later)
     // For now, we'll just assume we load them or start empty/optimistic
-    // Actually, let's just implement optimistic local state for now since we don't have a "get all reactions" endpoint that returns counts efficiently yet
-    // But wait, I didn't make a GET reactions endpoint.
-    // I'll skip fetching for now and just allow toggling if I can't see others'.
-    // Actually, that's bad UX.
-    // I'll add a simple fetch to the component or just rely on what we have.
-    // Let's just implement the toggle logic.
   }, []);
 
   const handleReaction = async (emoji: string) => {
@@ -58,39 +53,38 @@ export function EventReactions({ eventId, currentUser }: EventReactionsProps) {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-3">
       {REACTION_EMOJIS.map((emoji) => {
         const count = counts[emoji] || 0;
         const isActive = userReactions.has(emoji);
 
-        if (count === 0 && !isActive)
-          return (
-            <button
-              key={emoji}
-              onClick={() => handleReaction(emoji)}
-              className="opacity-50 hover:opacity-100 transition-opacity text-xl grayscale hover:grayscale-0"
-            >
-              {emoji}
-            </button>
-          );
-
         return (
-          <Button
+          <motion.button
             key={emoji}
-            variant="outline"
-            size="sm"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleReaction(emoji)}
             className={cn(
-              "gap-1.5 h-8 px-2.5",
-              isActive &&
-                "bg-primary/10 border-primary/50 text-primary hover:bg-primary/20"
+              "relative flex items-center justify-center w-12 h-12 rounded-full border transition-all duration-300",
+              isActive
+                ? "bg-primary/10 border-primary text-primary shadow-[0_0_15px_rgba(155,92,255,0.3)]"
+                : "bg-[#18181B] border-[#27272a] text-muted-foreground hover:bg-[#27272a] hover:text-white hover:border-white/20"
             )}
           >
-            <span className="text-lg leading-none">{emoji}</span>
-            <span className="text-xs font-medium">
-              {count > 0 ? count : ""}
-            </span>
-          </Button>
+            <span className="text-xl">{emoji}</span>
+            {count > 0 && (
+              <span
+                className={cn(
+                  "absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full border",
+                  isActive
+                    ? "bg-primary text-white border-primary"
+                    : "bg-[#27272a] text-white border-[#18181B]"
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </motion.button>
         );
       })}
     </div>

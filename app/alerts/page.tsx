@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Search, Star, Inbox, MailOpen, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import { AlertSidebar } from "@/components/alerts/AlertSidebar";
+import { AlertItem } from "@/components/alerts/AlertItem";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface Alert {
   id: number;
@@ -30,20 +31,20 @@ interface Notification {
 }
 
 export default function AlertsPage() {
-  const [activeTab, setActiveTab] = useState<
-    "all" | "unread" | "starred" | "notifications"
-  >("all");
+  const [activeTab, setActiveTab] = useState("all");
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchAlerts = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (activeTab !== "all") params.append("filter", activeTab);
+      if (activeTab !== "all" && activeTab !== "notifications")
+        params.append("filter", activeTab);
       if (search) params.append("q", search);
 
       const res = await fetch(`/api/alerts?${params.toString()}`);
@@ -56,7 +57,12 @@ export default function AlertsPage() {
       const notifRes = await fetch("/api/notifications");
       const notifData = await notifRes.json();
       if (notifData.notifications) {
-        setNotifications(notifData.notifications);
+        setNotifications(
+          notifData.notifications.map((n: any) => ({
+            ...n,
+            is_read: n.read, // Map DB column 'read' to frontend 'is_read'
+          }))
+        );
       }
     } catch (error) {
       console.error("Failed to fetch alerts", error);
@@ -117,179 +123,143 @@ export default function AlertsPage() {
     }
   };
 
+  const unreadCount = alerts.filter((a) => a.unread).length;
+  const notificationCount = notifications.filter((n) => !n.is_read).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Alerts</h1>
-        <div className="flex gap-2">
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search emails..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleSync}
-            disabled={syncing}
-          >
-            <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-          </Button>
+    <div className="min-h-screen bg-black text-white flex flex-col">
+      {/* Header */}
+      <header className="h-16 border-b border-white/10 flex items-center px-4 gap-4 bg-[#18181B]">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <h1 className="text-xl font-bold hidden md:block">CampusMail</h1>
+
+        <div className="flex-1 max-w-2xl mx-auto relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search mail..."
+            className="pl-10 bg-[#27272a] border-none text-white focus-visible:ring-1 focus-visible:ring-white/20"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      </div>
 
-      <div className="flex gap-2 border-b pb-2">
         <Button
-          variant={activeTab === "all" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("all")}
-          className="gap-2"
+          variant="ghost"
+          size="icon"
+          onClick={handleSync}
+          disabled={syncing}
+          className="text-gray-400 hover:text-white"
         >
-          <Inbox className="h-4 w-4" /> All
+          <RefreshCw className={cn("h-5 w-5", syncing && "animate-spin")} />
         </Button>
-        <Button
-          variant={activeTab === "unread" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("unread")}
-          className="gap-2"
-        >
-          <MailOpen className="h-4 w-4" /> Unread
-        </Button>
-        <Button
-          variant={activeTab === "starred" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("starred")}
-          className="gap-2"
-        >
-          <Star className="h-4 w-4" /> Starred
-        </Button>
-        <Button
-          variant={activeTab === "notifications" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("notifications")}
-          className="gap-2"
-        >
-          <Inbox className="h-4 w-4" /> Notifications
-          {notifications.filter((n) => !n.is_read).length > 0 && (
-            <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">
-              {notifications.filter((n) => !n.is_read).length}
-            </span>
-          )}
-        </Button>
-      </div>
+      </header>
 
-      <div className="space-y-2">
-        {activeTab === "notifications" ? (
-          <div className="space-y-2">
-            {notifications.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No notifications.
-              </div>
-            ) : (
-              notifications.map((n) => (
-                <Card
-                  key={n.id}
-                  className={cn(
-                    "transition-colors",
-                    !n.is_read && "bg-accent/10"
-                  )}
-                >
-                  <CardContent className="p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="font-semibold">{n.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {n.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(n.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {n.type === "space_invite" && !n.is_read && (
-                      <Button size="sm" onClick={() => handleAcceptInvite(n)}>
-                        Accept Invite
-                      </Button>
-                    )}
-                    {n.is_read && (
-                      <span className="text-xs text-muted-foreground">
-                        Read
-                      </span>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        ) : loading ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Loading alerts...
-          </div>
-        ) : alerts.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No alerts found.
-          </div>
-        ) : (
-          alerts.map((email) => (
-            <Link key={email.id} href={`/alerts/${email.id}`}>
-              <Card
-                className={cn(
-                  "cursor-pointer transition-colors hover:bg-accent/50",
-                  email.unread && "bg-accent/10"
-                )}
-              >
-                <CardContent className="p-4 flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="icon"
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <AlertSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          unreadCount={unreadCount}
+          notificationCount={notificationCount}
+        />
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto bg-[#0E0E10] rounded-tl-2xl border-l border-t border-white/5 mt-2 mr-2 mb-2 p-0">
+          {activeTab === "notifications" ? (
+            <div className="p-4 space-y-2">
+              {notifications.length === 0 ? (
+                <div className="text-center py-20 text-gray-500">
+                  No notifications
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
                     className={cn(
-                      "h-8 w-8",
-                      email.starred ? "text-black" : "text-muted-foreground"
+                      "p-4 rounded-lg border border-white/5 flex items-center justify-between",
+                      !n.is_read ? "bg-[#18181B]" : "opacity-70"
                     )}
                   >
-                    <Star
-                      className="h-4 w-4"
-                      fill={email.starred ? "currentColor" : "none"}
-                    />
-                  </Button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p
-                        className={cn(
-                          "text-sm font-medium truncate",
-                          email.unread && "font-bold"
-                        )}
-                      >
-                        {(() => {
-                          const from = email.from_email;
-                          // Extract name from "Name <email>" format
-                          const match = from.match(/^"?([^"<]+)"?\s*<.+>$/);
-                          return match ? match[1].trim() : from;
-                        })()}
-                      </p>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                        {new Date(email.received_at).toLocaleDateString()}
-                      </span>
+                    <div>
+                      <h3 className="font-bold text-white">{n.title}</h3>
+                      <p className="text-gray-400 text-sm">{n.message}</p>
                     </div>
-                    <p
-                      className={cn(
-                        "text-sm truncate",
-                        email.unread && "font-semibold"
-                      )}
-                    >
-                      {email.subject}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {email.snippet}
-                    </p>
+                    {n.type === "space_invite" &&
+                      (n.is_read ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          className="text-green-500 border-green-500/50 bg-green-500/10"
+                        >
+                          Joined
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleAcceptInvite(n)}
+                          className="bg-primary text-white hover:bg-primary/90"
+                        >
+                          Accept
+                        </Button>
+                      ))}
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))
-        )}
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {loading ? (
+                <div className="text-center py-20 text-gray-500">
+                  Loading...
+                </div>
+              ) : alerts.length === 0 ? (
+                <div className="text-center py-20 text-gray-500">
+                  No messages found
+                </div>
+              ) : (
+                <AnimatePresence>
+                  {alerts.map((alert) => (
+                    <AlertItem
+                      key={alert.id}
+                      alert={alert}
+                      onToggleStar={async (id) => {
+                        // Optimistic update
+                        setAlerts(
+                          alerts.map((a) =>
+                            a.id === id ? { ...a, starred: !a.starred } : a
+                          )
+                        );
+                        try {
+                          await fetch(`/api/alerts/${id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ starred: !alert.starred }),
+                          });
+                        } catch (error) {
+                          console.error("Failed to toggle star", error);
+                          // Revert on error
+                          setAlerts(
+                            alerts.map((a) =>
+                              a.id === id ? { ...a, starred: !a.starred } : a
+                            )
+                          );
+                        }
+                      }}
+                    />
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

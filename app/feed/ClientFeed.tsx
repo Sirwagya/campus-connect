@@ -95,21 +95,23 @@ export default function ClientFeed({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto border-x min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b p-4">
-        <h1 className="text-xl font-bold">Home</h1>
+    <div className="w-full max-w-[720px] mx-auto min-h-screen pb-20">
+      <div className="sticky top-0 z-30 bg-[#0E0E10]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 mb-6">
+        <h1 className="text-xl font-bold text-white tracking-tight">Home</h1>
       </div>
 
-      <Composer user={user} onPostCreated={handlePostCreated} />
+      <div className="px-4 md:px-0 space-y-6">
+        <Composer user={user} onPostCreated={handlePostCreated} />
 
-      <PostList
-        posts={posts}
-        currentUserId={user.id}
-        currentUser={user}
-        onLoadMore={loadMore}
-        hasMore={hasMore}
-        loading={loading}
-      />
+        <PostList
+          posts={posts}
+          currentUserId={user.id}
+          currentUser={user}
+          onLoadMore={loadMore}
+          hasMore={hasMore}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 }

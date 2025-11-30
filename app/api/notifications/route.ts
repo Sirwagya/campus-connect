@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest) {
 
         const { error } = await supabase
             .from('notifications')
-            .update({ is_read })
+            .update({ read: is_read })
             .eq('id', id)
             .eq('user_id', session.user.id);
 

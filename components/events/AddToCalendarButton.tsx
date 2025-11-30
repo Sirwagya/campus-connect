@@ -1,8 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/DropdownMenu";
-import { Calendar } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
+import { Calendar, ChevronDown } from "lucide-react";
 import { Event } from "@/types/events";
 
 interface AddToCalendarButtonProps {
@@ -53,29 +58,42 @@ export function AddToCalendarButton({ event }: AddToCalendarButtonProps) {
   };
 
   return (
-    <DropdownMenu
-      trigger={
-        <Button variant="outline" className="w-full">
-          <Calendar className="mr-2 h-4 w-4" />
-          Add to Calendar
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between bg-[#18181B] border-[#27272a] hover:bg-[#27272a] hover:text-white hover:border-primary/50 transition-all duration-300 group"
+        >
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span>Add to Calendar</span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-white transition-colors" />
         </Button>
-      }
-    >
-      <DropdownMenuItem
-        onClick={() => window.open(googleCalendarUrl(), "_blank")}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-[200px] bg-[#18181B] border-[#27272a]"
       >
-        Google Calendar
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={() => window.open(outlookCalendarUrl(), "_blank")}
-      >
-        Outlook
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={() => window.open(`/api/events/${event.id}/ics`, "_blank")}
-      >
-        Apple Calendar (.ics)
-      </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => window.open(googleCalendarUrl(), "_blank")}
+          className="cursor-pointer hover:bg-[#27272a] hover:text-primary focus:bg-[#27272a] focus:text-primary"
+        >
+          Google Calendar
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => window.open(outlookCalendarUrl(), "_blank")}
+          className="cursor-pointer hover:bg-[#27272a] hover:text-primary focus:bg-[#27272a] focus:text-primary"
+        >
+          Outlook
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => window.open(`/api/events/${event.id}/ics`, "_blank")}
+          className="cursor-pointer hover:bg-[#27272a] hover:text-primary focus:bg-[#27272a] focus:text-primary"
+        >
+          Apple Calendar (.ics)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }

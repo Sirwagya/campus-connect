@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --card: #ffffff;
-  --card-foreground: #000000;
-  --popover: #ffffff;
-  --popover-foreground: #000000;
-  --primary: #000000;
+  /* Spotify/GitHub Dark Theme */
+  --background: #000000;
+  --foreground: #f2f2f2;
+
+  --card: #131313;
+  --card-foreground: #f2f2f2;
+
+  --popover: #18181b;
+  --popover-foreground: #f2f2f2;
+
+  --primary: #9b5cff;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #000000;
+
+  --secondary: #27272a;
+  --secondary-foreground: #f2f2f2;
+
+  --muted: #27272a;
+  --muted-foreground: #a3a3a3;
+
+  --accent: #9b5cff;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ff4a4a;
   --destructive-foreground: #ffffff;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #000000;
-  --radius: 0rem;
+
+  --border: #1f1f1f;
+  --input: #1f1f1f;
+  --ring: #9b5cff;
+
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -46,6 +56,9 @@
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: calc(var(--radius) - 1px);
   --radius-lg: var(--radius);
+
+  /* Custom Shadows */
+  --shadow-glow: 0 0 20px rgba(155, 92, 255, 0.3);
 }
 
 body {

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import {
   Hash,
   Send,
@@ -19,7 +19,12 @@ import { Space, SpaceMember, SpaceMessage } from "@/types/spaces";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/DropdownMenu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
 
 interface SpaceChatClientProps {
   space: Space;
@@ -367,29 +372,30 @@ export function SpaceChatClient({
             <Users className="h-5 w-5" />
           </Button>
 
-          <DropdownMenu
-            trigger={
+          <DropdownMenu>
+            <DropdownMenuTrigger>
               <Button variant="ghost" size="icon">
                 <MoreVertical className="h-5 w-5" />
               </Button>
-            }
-          >
-            <DropdownMenuItem onClick={handleLeave}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Leave Space</span>
-            </DropdownMenuItem>
-            {member?.role === "owner" && (
-              <>
-                <div className="h-px bg-border my-1" />
-                <DropdownMenuItem
-                  onClick={handleDeleteSpace}
-                  variant="destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Delete Space</span>
-                </DropdownMenuItem>
-              </>
-            )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleLeave}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Leave Space</span>
+              </DropdownMenuItem>
+              {member?.role === "owner" && (
+                <>
+                  <div className="h-px bg-border my-1" />
+                  <DropdownMenuItem
+                    onClick={handleDeleteSpace}
+                    variant="destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Delete Space</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
@@ -412,11 +418,15 @@ export function SpaceChatClient({
                 <div key={m.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <Avatar
-                        src={m.user?.avatar_url}
-                        fallback={m.user?.name?.[0] || "?"}
-                        className="h-10 w-10"
-                      />
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage
+                          src={m.user?.avatar_url}
+                          alt={m.user?.name || "User"}
+                        />
+                        <AvatarFallback>
+                          {m.user?.name?.[0] || "?"}
+                        </AvatarFallback>
+                      </Avatar>
                       {isOnline && (
                         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
                       )}
@@ -500,11 +510,10 @@ export function SpaceChatClient({
                       setSearchResults([]);
                     }}
                   >
-                    <Avatar
-                      src={user.avatar_url}
-                      fallback={user.name?.[0]}
-                      className="h-8 w-8"
-                    />
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatar_url} alt={user.name} />
+                      <AvatarFallback>{user.name?.[0]}</AvatarFallback>
+                    </Avatar>
                     <div>
                       <p className="text-sm font-medium">
                         {user.name || user.full_name}
@@ -521,11 +530,13 @@ export function SpaceChatClient({
 
           {selectedUser && (
             <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-md">
-              <Avatar
-                src={selectedUser.avatar_url}
-                fallback={selectedUser.name?.[0]}
-                className="h-8 w-8"
-              />
+              <Avatar className="h-8 w-8">
+                <AvatarImage
+                  src={selectedUser.avatar_url}
+                  alt={selectedUser.name}
+                />
+                <AvatarFallback>{selectedUser.name?.[0]}</AvatarFallback>
+              </Avatar>
               <div className="flex-1">
                 <p className="text-sm font-medium">
                   Selected: {selectedUser.name}
@@ -629,11 +640,15 @@ export function SpaceChatClient({
                 className={cn("flex gap-3 group", showHeader ? "mt-4" : "mt-1")}
               >
                 {showHeader ? (
-                  <Avatar
-                    src={msg.author?.avatar_url}
-                    fallback={msg.author?.name?.[0] || "?"}
-                    className="h-8 w-8 mt-1"
-                  />
+                  <Avatar className="h-8 w-8 mt-1">
+                    <AvatarImage
+                      src={msg.author?.avatar_url}
+                      alt={msg.author?.name || "User"}
+                    />
+                    <AvatarFallback>
+                      {msg.author?.name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
                 ) : (
                   <div className="w-8" />
                 )}

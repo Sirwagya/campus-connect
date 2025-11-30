@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
+import { createServerSupabase, supabaseAdmin } from '@/lib/supabase-server';
 
 export async function POST(
     request: NextRequest,
@@ -15,10 +15,10 @@ export async function POST(
 
         const { slug } = await params;
 
-        // 1. Get Space ID and details
-        const { data: space, error: spaceError } = await supabase
+        // 1. Get Space ID and details (Use Admin to bypass RLS for private spaces)
+        const { data: space, error: spaceError } = await supabaseAdmin
             .from('spaces')
-            .select('id, is_private, owner_id')
+            .select('id, name, is_private, owner_id')
             .eq('slug', slug)
             .single();
 
@@ -33,7 +33,7 @@ export async function POST(
                 // Proceed to join (owner is allowed)
             } else {
                 // Check if already a member
-                const { data: membership } = await supabase
+                const { data: membership } = await supabaseAdmin
                     .from('space_members')
                     .select('id')
                     .eq('space_id', space.id)
@@ -44,14 +44,25 @@ export async function POST(
                     return NextResponse.json({ message: 'Already a member' }, { status: 200 });
                 }
 
-                // If not owner and not member, forbid
-                // For now, we don't support joining private spaces without an invite code.
-                return NextResponse.json({ error: 'Cannot join private space directly' }, { status: 403 });
+                // Check for valid invite in notifications
+                const { data: invite } = await supabaseAdmin
+                    .from('notifications')
+                    .select('id')
+                    .eq('user_id', session.user.id)
+                    .eq('type', 'space_invite')
+                    .filter('data->>space_id', 'eq', space.id)
+                    .single();
+
+                if (!invite) {
+                    return NextResponse.json({ error: 'Cannot join private space without an invite' }, { status: 403 });
+                }
+
+                // If invite exists, allow joining
             }
         }
 
-        // 3. Join Space
-        const { error: joinError } = await supabase
+        // 3. Join Space (Use Admin to bypass RLS)
+        const { error: joinError } = await supabaseAdmin
             .from('space_members')
             .insert({
                 space_id: space.id,
@@ -67,7 +78,8 @@ export async function POST(
         }
 
         // 4. Increment member count (optional, can be done via trigger)
-        await supabase.rpc('increment_space_member_count', { space_id: space.id });
+        // We can ignore the error here if the RPC doesn't exist or fails
+        await supabaseAdmin.rpc('increment_space_member_count', { space_id: space.id });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

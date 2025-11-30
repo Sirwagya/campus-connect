@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
         const body = extractBody(fullMessage.payload);
         const snippet = fullMessage.snippet || '';
         const isUnread = fullMessage.labelIds?.includes('UNREAD') || false;
+        const isStarred = fullMessage.labelIds?.includes('STARRED') || false;
 
         // Check if message already exists
         const { data: existing } = await supabaseAdmin
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
             .from('alerts')
             .update({
               unread: isUnread,
+              starred: isStarred,
               body_html: body.html,
               body_text: body.text,
               snippet: snippet,
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
               body_html: body.html,
               received_at: new Date(headers.date).toISOString(),
               unread: isUnread,
-              starred: false,
+              starred: isStarred,
             });
 
           newCount++;

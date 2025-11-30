@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Minimalist College Community App
+
+A full-stack web application for a college community with a strict black-and-white minimalist design.
+
+## Project Structure
+
+```
+.
+├── app
+│   ├── actions            # Server Actions
+│   ├── admin              # Admin Dashboard
+│   │   └── events         # Event Management
+│   ├── alerts             # Alerts/Inbox Page
+│   ├── api                # API Routes
+│   │   ├── admin          # Admin APIs
+│   │   ├── alerts         # Alerts API
+│   │   ├── auth           # Auth API
+│   │   ├── debug          # Debug API
+│   │   ├── events         # Events API
+│   │   ├── feed           # Feed API
+│   │   ├── invites        # Invites API
+│   │   ├── notifications  # Notifications API
+│   │   ├── spaces         # Spaces API
+│   │   └── users          # User Search API
+│   ├── auth               # Auth Pages
+│   ├── events             # Events Hub & Details
+│   ├── feed               # Social Feed
+│   ├── login              # Login Page
+│   ├── profile            # User Profiles
+│   │   ├── [id]           # Public Profile
+│   │   └── edit           # Profile Editor
+│   ├── spaces             # Spaces/Clubs
+│   ├── globals.css        # Global Styles
+│   ├── layout.tsx         # Root Layout
+│   └── page.tsx           # Home Dashboard
+├── components
+│   ├── email              # Email Rendering Components
+│   ├── events             # Event Components (Cards, Modals, Forms)
+│   ├── feed               # Feed Components (Posts, Comments)
+│   ├── profile            # Profile Components (Dashboard, Editor)
+│   ├── spaces             # Space Components
+│   ├── ui                 # Reusable UI Components (Shadcn/Custom)
+│   ├── AuthProvider.tsx   # Auth Context
+│   ├── BottomNav.tsx      # Mobile Navigation
+│   ├── ClientLayout.tsx   # Client Layout Wrapper
+│   └── Sidebar.tsx        # Desktop Sidebar
+├── hooks
+│   └── use-debounce.ts    # Custom Hooks
+├── lib
+│   ├── email              # Email Parsing & Sanitization
+│   ├── feed               # Feed Logic
+│   ├── profile            # Profile Logic (Integrations, Leveling)
+│   ├── supabase           # Supabase Clients (Client/Server)
+│   ├── auth.ts            # Auth Logic
+│   ├── gmail.ts           # Gmail Client
+│   └── utils.ts           # Utilities
+├── public                 # Static Assets
+├── supabase
+│   ├── migrations         # Database Migrations
+│   └── schema.sql         # Core Schema
+├── types                  # TypeScript Definitions
+├── middleware.ts          # Middleware (Auth/Routing)
+├── next.config.ts         # Next.js Config
+├── package.json           # Dependencies
+└── tailwind.config.ts     # Tailwind Config
+```
 
 ## Getting Started
 
-First, run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Home**: Admin-controlled dashboard with announcements and featured events.
+- **Feed**: Campus-wide microblogging feed.
+- **Spaces**: Groups for clubs and global discussions.
+- **Events**: Event management and registration system.
+- **Alerts**: Read-only integration with college email (simulated).

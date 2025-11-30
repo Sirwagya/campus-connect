@@ -1,0 +1,115 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Composer } from "@/components/feed/Composer";
+import { PostList } from "@/components/feed/PostList";
+import { createClient } from "@/lib/supabase/client";
+
+interface ClientFeedProps {
+  initialPosts: any[];
+  initialCursor: string | null;
+  user: any;
+}
+
+export default function ClientFeed({
+  initialPosts,
+  initialCursor,
+  user,
+}: ClientFeedProps) {
+  const [posts, setPosts] = useState<any[]>(initialPosts);
+  const [cursor, setCursor] = useState<string | null>(initialCursor);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(!!initialCursor);
+
+  const supabase = createClient();
+
+  // Load more posts
+  const loadMore = useCallback(async () => {
+    if (loading || !cursor) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch(`/api/feed?cursor=${cursor}&limit=10`);
+      const data = await res.json();
+
+      if (data.posts) {
+        setPosts((prev) => [...prev, ...data.posts]);
+        setCursor(data.nextCursor);
+        setHasMore(!!data.nextCursor);
+      }
+    } catch (error) {
+      console.error("Failed to load more posts:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [cursor, loading]);
+
+  // Realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel("public:posts")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "posts" },
+        async (payload: any) => {
+          const newPostId = payload.new.id;
+
+          // Check if we already have this post (e.g. from optimistic update)
+          // Optimistic posts have 'temp-' IDs, so we might have a duplicate if we don't handle it.
+          // Ideally, we'd replace the temp post with the real one.
+          // For now, let's just fetch the full post details (to get user info) and prepend it.
+
+          // Fetch the full post with user details
+          const { data: fullPost } = await supabase
+            .from("posts")
+            .select(
+              `
+              *,
+              user:users(id, name, full_name, avatar_url, email),
+              likes:post_likes(user_id), 
+              comments:comments(count)
+            `
+            )
+            .eq("id", newPostId)
+            .single();
+
+          if (fullPost) {
+            setPosts((prev) => {
+              // Filter out optimistic post if it matches (hard to know without correlation ID,
+              // but we can filter by content/user if needed, or just prepend and let React key handle it if we replace)
+              // Simple approach: Prepend real post.
+              return [fullPost, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
+  const handlePostCreated = (newPost: any) => {
+    setPosts((prev) => [newPost, ...prev]);
+  };
+
+  return (
+    <div className="w-full max-w-2xl mx-auto border-x min-h-screen">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b p-4">
+        <h1 className="text-xl font-bold">Home</h1>
+      </div>
+
+      <Composer user={user} onPostCreated={handlePostCreated} />
+
+      <PostList
+        posts={posts}
+        currentUserId={user.id}
+        currentUser={user}
+        onLoadMore={loadMore}
+        hasMore={hasMore}
+        loading={loading}
+      />
+    </div>
+  );
+}

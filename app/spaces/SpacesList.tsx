@@ -12,9 +12,16 @@ import { motion } from "framer-motion";
 interface SpacesListProps {
   initialSpaces: Space[];
   isAdmin?: boolean;
+  currentUserId?: string;
+  membershipMap?: Record<string, string>; // space_id -> role
 }
 
-export function SpacesList({ initialSpaces, isAdmin }: SpacesListProps) {
+export function SpacesList({
+  initialSpaces,
+  isAdmin,
+  currentUserId,
+  membershipMap = {},
+}: SpacesListProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>(initialSpaces);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,6 +36,14 @@ export function SpacesList({ initialSpaces, isAdmin }: SpacesListProps) {
       space.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       space.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Determine if user can edit a specific space
+  const canEditSpace = (space: Space) => {
+    if (isAdmin) return true;
+    if (currentUserId === space.owner_id) return true;
+    const role = membershipMap[space.id];
+    return role === "owner" || role === "moderator";
+  };
 
   return (
     <div className="space-y-10">
@@ -104,7 +119,7 @@ export function SpacesList({ initialSpaces, isAdmin }: SpacesListProps) {
             >
               <SpaceCard
                 space={space}
-                isAdmin={isAdmin}
+                isAdmin={canEditSpace(space)}
                 onDelete={() => handleDeleteSpace(space.id)}
               />
             </motion.div>

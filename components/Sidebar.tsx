@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
+  Cog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
@@ -20,6 +21,8 @@ import { Button } from "./ui/Button";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePresenceContext } from "./PresenceProvider";
+import { GlobalSearch } from "./search/GlobalSearch";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -38,6 +41,15 @@ export function Sidebar() {
   const { user, signOut, isAdmin } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Safe presence hook usage - will be undefined if outside PresenceProvider
+  let presenceStatus: "online" | "away" | "busy" | "offline" = "offline";
+  try {
+    const presence = usePresenceContext();
+    presenceStatus = presence.status;
+  } catch {
+    // Not wrapped in PresenceProvider, use default
+  }
 
   useEffect(() => {
     async function fetchAvatar() {
@@ -77,10 +89,10 @@ export function Sidebar() {
               className="flex items-center gap-2"
             >
               <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(155,92,255,0.3)]">
-                <span className="font-bold text-white text-lg">C</span>
+                <span className="font-bold text-white text-lg">V</span>
               </div>
               <span className="text-lg font-bold tracking-tight text-white whitespace-nowrap">
-                Campus Connect
+                Ved Hub
               </span>
             </motion.div>
           )}
@@ -94,6 +106,13 @@ export function Sidebar() {
           {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </Button>
       </div>
+
+      {/* Search */}
+      {!isCollapsed && (
+        <div className="px-3 pb-2">
+          <GlobalSearch />
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 space-y-2 px-3 py-4 overflow-y-auto scrollbar-hide">
@@ -209,6 +228,16 @@ export function Sidebar() {
                   <UserIcon className="h-5 w-5" />
                 </div>
               )}
+              {/* Presence indicator */}
+              <span
+                className={cn(
+                  "absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-black",
+                  presenceStatus === "online" && "bg-green-500",
+                  presenceStatus === "away" && "bg-yellow-500",
+                  presenceStatus === "busy" && "bg-red-500",
+                  presenceStatus === "offline" && "bg-gray-500"
+                )}
+              />
             </div>
             <AnimatePresence>
               {!isCollapsed && (
@@ -235,6 +264,22 @@ export function Sidebar() {
             </div>
           )
         )}
+
+        {/* Settings Link */}
+        {user && (
+          <Link
+            href="/profile/settings"
+            className={cn(
+              "flex items-center gap-3 w-full p-2 rounded-md text-muted-foreground hover:text-white hover:bg-[#282828] transition-colors mt-2",
+              isCollapsed && "justify-center",
+              pathname === "/profile/settings" && "bg-[#282828] text-white"
+            )}
+          >
+            <Cog className="h-5 w-5 shrink-0" />
+            {!isCollapsed && <span>Settings</span>}
+          </Link>
+        )}
+
         <Button
           variant="ghost"
           className={cn(

@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Composer } from "@/components/feed/Composer";
 import { PostList } from "@/components/feed/PostList";
+import { NewPostsBanner } from "@/components/feed/NewPostsBanner";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeFeedPost } from "@/lib/feed/normalize";
+import type {
+  PostWithRelations,
+  FeedResponse,
+  FeedUser,
+  FeedPost,
+} from "@/types/feed";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 interface ClientFeedProps {
-  initialPosts: any[];
+  initialPosts: FeedPost[];
   initialCursor: string | null;
-  user: any;
+  user: FeedUser;
 }
 
 export default function ClientFeed({
@@ -16,21 +25,41 @@ export default function ClientFeed({
   initialCursor,
   user,
 }: ClientFeedProps) {
-  const [posts, setPosts] = useState<any[]>(initialPosts);
+  const [posts, setPosts] = useState<FeedPost[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(!!initialCursor);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+
+  // Refresh feed (fetch latest posts)
+  const refreshFeed = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch('/api/feed?limit=10');
+      const data = (await res.json()) as FeedResponse;
+
+      if (data.posts) {
+        setPosts(data.posts);
+        setCursor(data.nextCursor);
+        setHasMore(!!data.nextCursor);
+      }
+    } catch (error) {
+      console.error("Failed to refresh feed:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
   // Load more posts
   const loadMore = useCallback(async () => {
-    if (loading || !cursor) return;
+    if (loading || !cursor || !hasMore) return;
     setLoading(true);
 
     try {
       const res = await fetch(`/api/feed?cursor=${cursor}&limit=10`);
-      const data = await res.json();
+      const data = (await res.json()) as FeedResponse;
 
       if (data.posts) {
         setPosts((prev) => [...prev, ...data.posts]);
@@ -42,7 +71,7 @@ export default function ClientFeed({
     } finally {
       setLoading(false);
     }
-  }, [cursor, loading]);
+  }, [cursor, hasMore, loading]);
 
   // Realtime subscription
   useEffect(() => {
@@ -51,8 +80,10 @@ export default function ClientFeed({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "posts" },
-        async (payload: any) => {
-          const newPostId = payload.new.id;
+        async (payload: RealtimePostgresChangesPayload<PostWithRelations>) => {
+          const newRecord = payload.new as PostWithRelations | Record<string, never>;
+          if (!('id' in newRecord) || !newRecord.id) return;
+          const newPostId = newRecord.id;
 
           // Check if we already have this post (e.g. from optimistic update)
           // Optimistic posts have 'temp-' IDs, so we might have a duplicate if we don't handle it.
@@ -78,7 +109,17 @@ export default function ClientFeed({
               // Filter out optimistic post if it matches (hard to know without correlation ID,
               // but we can filter by content/user if needed, or just prepend and let React key handle it if we replace)
               // Simple approach: Prepend real post.
-              return [fullPost, ...prev];
+              const normalized = normalizeFeedPost(fullPost as PostWithRelations, user.id);
+
+              // Remove optimistic version if the ID differs but content/user match
+              const filtered = prev.filter(
+                (existing) =>
+                  !existing.isOptimistic ||
+                  existing.content !== normalized.content ||
+                  existing.user_id !== normalized.user_id
+              );
+
+              return [normalized, ...filtered];
             });
           }
         }
@@ -88,16 +129,21 @@ export default function ClientFeed({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, user.id]);
 
-  const handlePostCreated = (newPost: any) => {
+  const handlePostCreated = (newPost: FeedPost) => {
     setPosts((prev) => [newPost, ...prev]);
   };
 
   return (
     <div className="w-full max-w-[720px] mx-auto min-h-screen pb-20">
+      {/* New Posts Banner */}
+      <NewPostsBanner onRefresh={refreshFeed} />
+
       <div className="sticky top-0 z-30 bg-[#0E0E10]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 mb-6">
-        <h1 className="text-xl font-bold text-white tracking-tight">Home</h1>
+        <h1 className="text-xl font-bold text-white tracking-tight">
+          {isRefreshing ? 'Refreshing...' : 'Home'}
+        </h1>
       </div>
 
       <div className="px-4 md:px-0 space-y-6">

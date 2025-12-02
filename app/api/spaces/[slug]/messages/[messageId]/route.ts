@@ -20,7 +20,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Content is required' }, { status: 400 });
         }
 
-        // Verify ownership
+        // Verify ownership - only author can edit their own message
         const { data: message } = await supabase
             .from('space_messages')
             .select('author_id')
@@ -52,8 +52,9 @@ export async function PATCH(
         }
 
         return NextResponse.json(updatedMessage);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -62,7 +63,7 @@ export async function DELETE(
     { params }: { params: Promise<{ slug: string; messageId: string }> }
 ) {
     try {
-        const { messageId } = await params;
+        const { slug, messageId } = await params;
         const supabase = await createServerSupabase();
         const { data: { session } } = await supabase.auth.getSession();
 
@@ -70,12 +71,10 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Verify ownership or moderator status
-        // For MVP, strictly allow only author to delete. 
-        // TODO: Add moderator check.
+        // Get the message with space info
         const { data: message } = await supabase
             .from('space_messages')
-            .select('author_id')
+            .select('author_id, space_id')
             .eq('id', messageId)
             .single();
 
@@ -83,7 +82,43 @@ export async function DELETE(
             return NextResponse.json({ error: 'Message not found' }, { status: 404 });
         }
 
-        if (message.author_id !== session.user.id) {
+        // Check if user is the author
+        const isAuthor = message.author_id === session.user.id;
+
+        // Check if user is owner or moderator of the space
+        const { data: space } = await supabase
+            .from('spaces')
+            .select('id, owner_id')
+            .eq('slug', slug)
+            .single();
+
+        if (!space) {
+            return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+        }
+
+        const isOwner = space.owner_id === session.user.id;
+
+        // Check membership role
+        const { data: membership } = await supabase
+            .from('space_members')
+            .select('role')
+            .eq('space_id', space.id)
+            .eq('user_id', session.user.id)
+            .single();
+
+        const isModerator = membership?.role === 'moderator' || membership?.role === 'owner';
+
+        // Check for global admin
+        const { data: user } = await supabase
+            .from('users')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .single();
+
+        const isAdmin = user?.is_admin;
+
+        // Allow delete if: author, owner, moderator, or global admin
+        if (!isAuthor && !isOwner && !isModerator && !isAdmin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -102,7 +137,8 @@ export async function DELETE(
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

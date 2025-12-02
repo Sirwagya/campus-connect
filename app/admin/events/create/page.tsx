@@ -6,13 +6,30 @@ import { Textarea } from "@/components/ui/Textarea";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import Image from "next/image";
+import { useMemo, useState, useCallback } from "react";
+import type { EventParticipationType } from "@/types/events";
+
+interface CreateEventFormState {
+  title: string;
+  description: string;
+  start_ts: string;
+  end_ts: string;
+  location: string;
+  capacity: string;
+  category: string;
+  tags: string;
+  color_block: string;
+  participation_type: EventParticipationType;
+  min_team_size: string;
+  max_team_size: string;
+}
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const supabase = createBrowserSupabase();
+  const supabase = useMemo(() => createBrowserSupabase(), []);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateEventFormState>({
     title: "",
     description: "",
     start_ts: "",
@@ -28,17 +45,19 @@ export default function CreateEventPage() {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const isParticipationType = (value: string): value is EventParticipationType =>
+      value === "solo" || value === "team" || value === "both";
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
     }
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsLoading(true);
 
     try {
@@ -62,10 +81,10 @@ export default function CreateEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          capacity: formData.capacity ? parseInt(formData.capacity) : null,
+          capacity: formData.capacity ? parseInt(formData.capacity, 10) : null,
           participation_type: formData.participation_type,
-          min_team_size: parseInt(formData.min_team_size),
-          max_team_size: parseInt(formData.max_team_size),
+          min_team_size: parseInt(formData.min_team_size, 10),
+          max_team_size: parseInt(formData.max_team_size, 10),
           tags: formData.tags
             .split(",")
             .map((t) => t.trim())
@@ -81,9 +100,10 @@ export default function CreateEventPage() {
 
       router.push("/events");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to create event";
       console.error("Error creating event:", error);
-      alert(error.message);
+      alert(message);
     } finally {
       setIsLoading(false);
     }
@@ -175,12 +195,12 @@ export default function CreateEventPage() {
               <select
                 className="w-full px-3 py-2 bg-background border rounded-md"
                 value={formData.participation_type}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    participation_type: e.target.value,
-                  })
-                }
+                onChange={(event) => {
+                  const { value } = event.target;
+                  if (isParticipationType(value)) {
+                    setFormData({ ...formData, participation_type: value });
+                  }
+                }}
               >
                 <option value="solo">Solo Only</option>
                 <option value="team">Team Only</option>
@@ -225,10 +245,11 @@ export default function CreateEventPage() {
           <div className="flex items-center gap-4">
             {imagePreview ? (
               <div className="relative w-32 h-20 rounded-lg overflow-hidden border">
-                <img
+                <Image
                   src={imagePreview}
                   alt="Preview"
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
                 <button
                   type="button"

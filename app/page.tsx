@@ -42,9 +42,8 @@ export default async function Home() {
         {/* Soft Spotlight */}
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-white/10 blur-[100px] rounded-full mix-blend-overlay pointer-events-none" />
 
-        <div className="container max-w-7xl mx-auto px-4 md:px-8 h-full flex flex-col justify-end pb-12 relative z-10">
+        <div className="container max-w-7xl mx-auto px-4 md:px-8 h-full flex flex-col justify-end pb-32 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 w-fit mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Sparkles className="h-4 w-4 text-[#6C4BF4]" />
             <span className="text-xs font-bold tracking-wide text-white uppercase">
               Welcome back, Sirwagya
             </span>
@@ -55,8 +54,8 @@ export default async function Home() {
           </h1>
 
           <p className="text-lg md:text-xl text-white/80 max-w-2xl font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            Discover events, catch up on announcements, and see what's trending
-            in your community.
+            Discover events, catch up on announcements, and see what&apos;s
+            trending in your community.
           </p>
         </div>
 
@@ -175,9 +174,7 @@ export default async function Home() {
                   <div className="h-16 w-16 bg-[#27272a] rounded-full flex items-center justify-center mx-auto mb-4">
                     <Bell className="h-8 w-8 text-gray-600" />
                   </div>
-                  <h3 className="text-white font-medium mb-1">
-                    All caught up!
-                  </h3>
+                  <h3 className="font-semibold text-center">All caught up!</h3>
                   <p className="text-gray-500 text-sm">
                     No new announcements at the moment.
                   </p>
@@ -211,7 +208,7 @@ export default async function Home() {
                       <Link href={`/profile/${post.user?.id}`}>
                         <Avatar className="h-8 w-8 border border-white/10 cursor-pointer">
                           <AvatarImage
-                            src={post.user?.avatar_url}
+                            src={post.user?.avatar_url ?? undefined}
                             alt={post.user?.email || "User"}
                           />
                           <AvatarFallback>

@@ -16,6 +16,8 @@ import {
   Settings,
 } from "lucide-react";
 import { Space, SpaceMember, SpaceMessage } from "@/types/spaces";
+import type { Database } from "@/types/database";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
@@ -25,11 +27,33 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
+import Image from "next/image";
+import { EditSpaceModal } from "@/components/spaces/EditSpaceModal";
+
+type MinimalUser = Pick<
+  Database["public"]["Tables"]["users"]["Row"],
+  "id" | "name" | "full_name" | "avatar_url"
+>;
+
+type CurrentUser = MinimalUser & { email?: string | null };
+
+type SpaceMemberWithUser = SpaceMember & { user?: MinimalUser | null };
+
+type PresenceUser = {
+  id: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  online_at?: string;
+};
+
+type MessagesResponse = { messages?: SpaceMessage[] };
+
+type SearchResponse = { users?: MinimalUser[] };
 
 interface SpaceChatClientProps {
   space: Space;
   initialMember: SpaceMember | null;
-  currentUser: any;
+  currentUser: CurrentUser;
 }
 
 export function SpaceChatClient({
@@ -48,16 +72,19 @@ export function SpaceChatClient({
 
   // Members Modal State
   const [showMembers, setShowMembers] = useState(false);
-  const [membersList, setMembersList] = useState<any[]>([]);
+  const [membersList, setMembersList] = useState<SpaceMemberWithUser[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Invite Modal State
   const [showInvite, setShowInvite] = useState(false);
   const [inviteSearch, setInviteSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [searchResults, setSearchResults] = useState<MinimalUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<MinimalUser | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [inviting, setInviting] = useState(false);
+
+  // Edit Space Modal State
+  const [showEditSpace, setShowEditSpace] = useState(false);
 
   // Debounced Search
   useEffect(() => {
@@ -68,10 +95,8 @@ export function SpaceChatClient({
           const res = await fetch(
             `/api/users/search?q=${encodeURIComponent(inviteSearch)}`
           );
-          const data = await res.json();
-          if (data.users) {
-            setSearchResults(data.users);
-          }
+          const data = (await res.json()) as SearchResponse;
+          setSearchResults(data.users ?? []);
         } catch (error) {
           console.error("Search failed", error);
         } finally {
@@ -121,9 +146,11 @@ export function SpaceChatClient({
     const fetchMessages = async () => {
       try {
         const res = await fetch(`/api/spaces/${space.slug}/messages`);
-        const data = await res.json();
+        const data = (await res.json()) as MessagesResponse;
         if (data.messages) {
           setMessages(data.messages);
+        } else {
+          setMessages([]);
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -150,8 +177,8 @@ export function SpaceChatClient({
           )
           .eq("space_id", space.id);
 
-        if (!error && data) {
-          setMembersList(data);
+        if (!error) {
+          setMembersList((data ?? []) as SpaceMemberWithUser[]);
         }
         setLoadingMembers(false);
       };
@@ -159,7 +186,7 @@ export function SpaceChatClient({
     }
   }, [showMembers, space.id, supabase]);
 
-  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
 
   // Realtime Subscription
   useEffect(() => {
@@ -175,8 +202,12 @@ export function SpaceChatClient({
           table: "space_messages",
           filter: `space_id=eq.${space.id}`,
         },
-        async (payload: any) => {
-          const newMsg = payload.new as SpaceMessage;
+        async (
+          payload: RealtimePostgresChangesPayload<SpaceMessage>
+        ) => {
+          const newMsgRaw = payload.new;
+          if (!newMsgRaw || !('id' in newMsgRaw) || !newMsgRaw.id) return;
+          const newMsg = newMsgRaw as SpaceMessage;
           // Fetch author details (since realtime payload doesn't have relations)
           const { data: author } = await supabase
             .from("users")
@@ -186,7 +217,7 @@ export function SpaceChatClient({
 
           setMessages((prev) => [
             ...prev,
-            { ...newMsg, author: author || undefined, reactions: [] },
+            { ...newMsg, author: (author as MinimalUser) || undefined, reactions: [] },
           ]);
         }
       )
@@ -200,14 +231,14 @@ export function SpaceChatClient({
         async () => {
           // Simplest approach for MVP: Refetch all messages to get updated reaction counts
           const res = await fetch(`/api/spaces/${space.slug}/messages`);
-          const data = await res.json();
+          const data = (await res.json()) as MessagesResponse;
           if (data.messages) {
             setMessages(data.messages);
           }
         }
       )
       .on("presence", { event: "sync" }, () => {
-        const newState = channel.presenceState();
+        const newState = channel.presenceState() as Record<string, PresenceUser[]>;
         const users = Object.values(newState).flat();
         setOnlineUsers(users);
       })
@@ -333,7 +364,19 @@ export function SpaceChatClient({
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3">
-          <Hash className="h-5 w-5 text-muted-foreground" />
+          {/* Space Icon */}
+          {space.icon_url ? (
+            <div className="relative h-10 w-10 rounded-xl overflow-hidden">
+              <Image
+                src={space.icon_url}
+                alt={`${space.name} icon`}
+                fill
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <Hash className="h-5 w-5 text-muted-foreground" />
+          )}
           <div>
             <h1 className="font-bold text-lg leading-none">{space.name}</h1>
             <div className="flex items-center gap-2 mt-1">
@@ -349,19 +392,18 @@ export function SpaceChatClient({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Invite Button (Private Spaces & Owner/Mod only) */}
-          {space.is_private &&
-            (member?.role === "owner" || member?.role === "moderator") && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => setShowInvite(true)}
-              >
-                <Users className="h-4 w-4" />
-                Invite
-              </Button>
-            )}
+          {/* Invite Button (Owner/Mod only) */}
+          {(member?.role === "owner" || member?.role === "moderator") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowInvite(true)}
+            >
+              <Users className="h-4 w-4" />
+              Invite
+            </Button>
+          )}
 
           <Button
             variant="ghost"
@@ -379,6 +421,15 @@ export function SpaceChatClient({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              {(member?.role === "owner" || member?.role === "moderator") && (
+                <>
+                  <DropdownMenuItem onClick={() => setShowEditSpace(true)}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Edit Space</span>
+                  </DropdownMenuItem>
+                  <div className="h-px bg-border my-1" />
+                </>
+              )}
               <DropdownMenuItem onClick={handleLeave}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Leave Space</span>
@@ -413,14 +464,17 @@ export function SpaceChatClient({
             </div>
           ) : (
             membersList.map((m) => {
-              const isOnline = onlineUsers.some((u: any) => u.id === m.user_id);
+              const isOnline = onlineUsers.some((u) => u.id === m.user_id);
+              const canManage = member?.role === "owner" && m.role !== "owner" && m.user_id !== currentUser.id;
+              const canRemove = (member?.role === "owner" || member?.role === "moderator") && m.role !== "owner" && m.user_id !== currentUser.id;
+              
               return (
-                <div key={m.id} className="flex items-center justify-between">
+                <div key={m.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="h-10 w-10">
                         <AvatarImage
-                          src={m.user?.avatar_url}
+                          src={m.user?.avatar_url ?? undefined}
                           alt={m.user?.name || "User"}
                         />
                         <AvatarFallback>
@@ -432,35 +486,109 @@ export function SpaceChatClient({
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-sm">
+                      <p className="font-medium text-sm flex items-center gap-2">
                         {m.user?.name || "Unknown User"}
                         {m.user_id === currentUser.id && " (You)"}
+                        {m.role === "moderator" && (
+                          <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">Mod</span>
+                        )}
+                        {m.role === "owner" && (
+                          <span className="text-xs bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded">Owner</span>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground capitalize">
                         {m.role}
                       </p>
                     </div>
                   </div>
+                  
+                  {/* Member actions */}
+                  {(canManage || canRemove) && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={async () => {
+                            const newRole = m.role === "moderator" ? "member" : "moderator";
+                            const action = m.role === "moderator" ? "remove as moderator" : "make moderator";
+                            if (!confirm(`Are you sure you want to ${action} ${m.user?.name}?`)) return;
+                            
+                            try {
+                              const res = await fetch(`/api/spaces/${space.slug}/members/${m.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ role: newRole })
+                              });
+                              
+                              if (res.ok) {
+                                // Update local state
+                                setMembersList((prev) => prev.map((listMember) =>
+                                  listMember.id === m.id ? { ...listMember, role: newRole } : listMember
+                                ));
+                              } else {
+                                const data = await res.json();
+                                alert(data.error || "Failed to update role");
+                              }
+                            } catch (error) {
+                              console.error("Error updating role:", error);
+                              alert("Failed to update role");
+                            }
+                          }}
+                        >
+                          {m.role === "moderator" ? "Remove Mod" : "Make Mod"}
+                        </Button>
+                      )}
+                      {canRemove && m.role !== "moderator" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                          onClick={async () => {
+                            if (!confirm(`Are you sure you want to remove ${m.user?.name} from this space?`)) return;
+                            
+                            try {
+                              const res = await fetch(`/api/spaces/${space.slug}/members/${m.id}`, {
+                                method: "DELETE"
+                              });
+                              
+                              if (res.ok) {
+                                setMembersList((prev) => prev.filter((listMember) => listMember.id !== m.id));
+                              } else {
+                                const data = await res.json();
+                                alert(data.error || "Failed to remove member");
+                              }
+                            } catch (error) {
+                              console.error("Error removing member:", error);
+                              alert("Failed to remove member");
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })
           )}
         </div>
-        {space.is_private &&
-          (member?.role === "owner" || member?.role === "moderator") && (
-            <div className="mt-4 pt-4 border-t">
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => {
-                  setShowMembers(false);
-                  setShowInvite(true);
-                }}
-              >
-                Invite members
-              </Button>
-            </div>
-          )}
+        {(member?.role === "owner" || member?.role === "moderator") && (
+          <div className="mt-4 pt-4 border-t">
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => {
+                setShowMembers(false);
+                setShowInvite(true);
+              }}
+            >
+              Invite members
+            </Button>
+          </div>
+        )}
       </Modal>
 
       {/* Invite Modal */}
@@ -506,20 +634,25 @@ export function SpaceChatClient({
                     className="w-full flex items-center gap-3 p-2 hover:bg-accent text-left transition-colors"
                     onClick={() => {
                       setSelectedUser(user);
-                      setInviteSearch(user.name || user.full_name);
+                      setInviteSearch(user.name ?? user.full_name ?? "");
                       setSearchResults([]);
                     }}
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar_url} alt={user.name} />
-                      <AvatarFallback>{user.name?.[0]}</AvatarFallback>
+                      <AvatarImage
+                        src={user.avatar_url ?? undefined}
+                        alt={user.name ?? user.full_name ?? "User"}
+                      />
+                      <AvatarFallback>
+                        {user.name?.[0] ?? user.full_name?.[0] ?? "?"}
+                      </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium">
-                        {user.name || user.full_name}
+                        {user.name || user.full_name || "Unknown user"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        @{user.name}
+                        @{user.name ?? user.full_name ?? user.id}
                       </p>
                     </div>
                   </button>
@@ -532,14 +665,16 @@ export function SpaceChatClient({
             <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-md">
               <Avatar className="h-8 w-8">
                 <AvatarImage
-                  src={selectedUser.avatar_url}
-                  alt={selectedUser.name}
+                  src={selectedUser.avatar_url ?? undefined}
+                  alt={selectedUser.name ?? selectedUser.full_name ?? "Selected user"}
                 />
-                <AvatarFallback>{selectedUser.name?.[0]}</AvatarFallback>
+                <AvatarFallback>
+                  {selectedUser.name?.[0] ?? selectedUser.full_name?.[0] ?? "?"}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <p className="text-sm font-medium">
-                  Selected: {selectedUser.name}
+                  Selected: {selectedUser.name || selectedUser.full_name || selectedUser.id}
                 </p>
               </div>
               <Button
@@ -573,7 +708,9 @@ export function SpaceChatClient({
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email: selectedUser.name }), // Backend falls back to name lookup
+                      body: JSON.stringify({
+                        userId: selectedUser.id,
+                      }),
                     }
                   );
                   const data = await res.json();
@@ -625,6 +762,9 @@ export function SpaceChatClient({
               { count: number; hasReacted: boolean }
             > = {};
             msg.reactions?.forEach((r) => {
+              if (!r.emoji) {
+                return;
+              }
               if (!reactionCounts[r.emoji]) {
                 reactionCounts[r.emoji] = { count: 0, hasReacted: false };
               }
@@ -642,7 +782,7 @@ export function SpaceChatClient({
                 {showHeader ? (
                   <Avatar className="h-8 w-8 mt-1">
                     <AvatarImage
-                      src={msg.author?.avatar_url}
+                      src={msg.author?.avatar_url ?? undefined}
                       alt={msg.author?.name || "User"}
                     />
                     <AvatarFallback>
@@ -695,6 +835,7 @@ export function SpaceChatClient({
                           ))}
 
                           {/* Message Actions (Edit/Delete) */}
+                          {/* Author can edit their own messages */}
                           {isMe && (
                             <>
                               <div className="w-px h-3 bg-border mx-1" />
@@ -708,7 +849,6 @@ export function SpaceChatClient({
                                     newContent &&
                                     newContent !== msg.content
                                   ) {
-                                    // Simple prompt for MVP. Ideally inline edit.
                                     fetch(
                                       `/api/spaces/${space.slug}/messages/${msg.id}`,
                                       {
@@ -741,6 +881,13 @@ export function SpaceChatClient({
                                   <path d="m15 5 4 4" />
                                 </svg>
                               </button>
+                            </>
+                          )}
+                          
+                          {/* Delete: Author, Owner, or Moderator can delete */}
+                          {(isMe || member?.role === "owner" || member?.role === "moderator") && (
+                            <>
+                              {!isMe && <div className="w-px h-3 bg-border mx-1" />}
                               <button
                                 onClick={() => {
                                   if (
@@ -834,6 +981,16 @@ export function SpaceChatClient({
           </Button>
         </form>
       </div>
+
+      {/* Edit Space Modal */}
+      <EditSpaceModal
+        isOpen={showEditSpace}
+        onClose={() => {
+          setShowEditSpace(false);
+          router.refresh(); // Refresh to get updated space data
+        }}
+        space={space}
+      />
     </div>
   );
 }

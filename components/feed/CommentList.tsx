@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Loader2, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import type { FeedComment, FeedUser } from "@/types/feed";
 
 interface CommentListProps {
   postId: string;
-  currentUser: any;
+  currentUser?: FeedUser;
   onCommentAdded?: () => void;
 }
 
@@ -19,19 +20,15 @@ export function CommentList({
   currentUser,
   onCommentAdded,
 }: CommentListProps) {
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<FeedComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchComments();
-  }, [postId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       const res = await fetch(`/api/feed/comments?postId=${postId}`);
-      const data = await res.json();
+      const data = (await res.json()) as { comments?: FeedComment[] };
       if (data.comments) {
         setComments(data.comments);
       }
@@ -40,7 +37,12 @@ export function CommentList({
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchComments();
+  }, [fetchComments]);
 
   const handleSubmit = async () => {
     if (!newComment.trim() || submitting) return;
@@ -58,7 +60,7 @@ export function CommentList({
 
       if (!res.ok) throw new Error("Failed to post comment");
 
-      const { comment } = await res.json();
+      const { comment } = (await res.json()) as { comment: FeedComment };
 
       setComments((prev) => [...prev, comment]);
       setNewComment("");
@@ -77,8 +79,8 @@ export function CommentList({
       <div className="flex gap-3">
         <Avatar className="h-8 w-8">
           <AvatarImage
-            src={currentUser?.avatar_url}
-            alt={currentUser?.name || "User"}
+            src={currentUser?.avatar_url || undefined}
+            alt={currentUser?.name || currentUser?.email || "User"}
           />
           <AvatarFallback>
             {currentUser?.name?.[0] || currentUser?.email?.[0] || "?"}
@@ -117,8 +119,8 @@ export function CommentList({
               <Link href={`/profile/${comment.user_id}`}>
                 <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity">
                   <AvatarImage
-                    src={comment.user?.avatar_url}
-                    alt={comment.user?.name || "User"}
+                    src={comment.user?.avatar_url || undefined}
+                    alt={comment.user?.name || comment.user?.email || "User"}
                   />
                   <AvatarFallback>
                     {comment.user?.name?.[0] || comment.user?.email?.[0] || "?"}
@@ -134,9 +136,11 @@ export function CommentList({
                     {comment.user?.full_name || comment.user?.name || "Unknown"}
                   </Link>
                   <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(comment.created_at), {
-                      addSuffix: true,
-                    })}
+                    {comment.created_at
+                      ? formatDistanceToNow(new Date(comment.created_at), {
+                          addSuffix: true,
+                        })
+                      : "just now"}
                   </span>
                 </div>
                 <p className="text-sm whitespace-pre-wrap">{comment.content}</p>

@@ -1,11 +1,15 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
 
-const SECRET_KEY = process.env.SESSION_SECRET || 'your-super-secret-session-key-change-this';
-const key = new TextEncoder().encode(SECRET_KEY);
+// SECURITY: Require SESSION_SECRET in production
+const SECRET_KEY = process.env.SESSION_SECRET;
+if (!SECRET_KEY && process.env.NODE_ENV === 'production') {
+  throw new Error('SESSION_SECRET environment variable is required in production');
+}
 
-export async function encryptSession(payload: any) {
+const key = new TextEncoder().encode(SECRET_KEY || 'dev-secret-key-not-for-production');
+
+export async function encryptSession(payload: JWTPayload) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -13,7 +17,7 @@ export async function encryptSession(payload: any) {
     .sign(key);
 }
 
-export async function decryptSession(input: string): Promise<any> {
+export async function decryptSession(input: string): Promise<JWTPayload> {
   const { payload } = await jwtVerify(input, key, {
     algorithms: ['HS256'],
   });
@@ -31,7 +35,7 @@ export async function getSession() {
   }
 }
 
-export async function setSession(payload: any) {
+export async function setSession(payload: JWTPayload) {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
   const session = await encryptSession(payload);
   const cookieStore = await cookies();

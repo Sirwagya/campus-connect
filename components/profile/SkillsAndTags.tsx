@@ -3,12 +3,19 @@
 import { Badge } from "@/components/ui/Badge";
 import { motion } from "framer-motion";
 
+interface Skill {
+  id?: string;
+  skill_name: string;
+  proficiency?: string;
+  category?: string;
+}
+
 interface SkillsAndTagsProps {
-  skills: any[];
+  skills: Skill[];
   isOwner: boolean;
 }
 
-export function SkillsAndTags({ skills, isOwner }: SkillsAndTagsProps) {
+export function SkillsAndTags({ skills }: SkillsAndTagsProps) {
   if (!skills || skills.length === 0) {
     return (
       <div className="text-muted-foreground text-sm italic">

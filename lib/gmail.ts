@@ -2,6 +2,32 @@ import 'server-only';
 import { google } from 'googleapis';
 import { getValidAccessToken } from './gmail-tokens';
 
+// Gmail API type definitions - flexible to match Google's schema
+interface GmailHeader {
+  name?: string | null;
+  value?: string | null;
+}
+
+interface GmailMessagePart {
+  mimeType?: string | null;
+  body?: {
+    data?: string | null;
+    size?: number | null;
+  };
+  parts?: GmailMessagePart[];
+  headers?: GmailHeader[];
+}
+
+interface GmailPayload {
+  headers?: GmailHeader[];
+  body?: {
+    data?: string | null;
+    size?: number | null;
+  };
+  mimeType?: string | null;
+  parts?: GmailMessagePart[];
+}
+
 /**
  * Create authenticated Gmail client for a user
  */
@@ -119,14 +145,14 @@ export async function searchMessages(
 /**
  * Parse email headers
  */
-export function parseHeaders(headers: any[]): {
+export function parseHeaders(headers: Array<{ name?: string | null; value?: string | null }>): {
   from: string;
   to: string;
   subject: string;
   date: string;
 } {
   const getHeader = (name: string) => {
-    const header = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
+    const header = headers.find((h) => h.name?.toLowerCase() === name.toLowerCase());
     return header?.value || '';
   };
 
@@ -141,7 +167,7 @@ export function parseHeaders(headers: any[]): {
 /**
  * Extract email body (both text and HTML)
  */
-export function extractBody(payload: any): { text: string; html: string } {
+export function extractBody(payload: GmailPayload): { text: string; html: string } {
   let text = '';
   let html = '';
 
@@ -158,7 +184,7 @@ export function extractBody(payload: any): { text: string; html: string } {
 
   // Multipart message
   if (payload.parts) {
-    const extractFromParts = (parts: any[], depth: number = 0): void => {
+    const extractFromParts = (parts: GmailMessagePart[], depth: number = 0): void => {
       for (const part of parts) {
         const mimeType = part.mimeType?.toLowerCase() || '';
         console.log(`[Gmail] Part depth=${depth} mime=${mimeType} hasBody=${!!part.body?.data} hasParts=${!!part.parts}`);

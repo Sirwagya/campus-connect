@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { ArrowLeft, Star, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { ArrowLeft, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmailRenderer } from "@/components/email/EmailRenderer";
 

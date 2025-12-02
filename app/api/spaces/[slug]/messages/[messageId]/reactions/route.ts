@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 
+type ReactionPayload = {
+    emoji?: string;
+};
+
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ slug: string; messageId: string }> }
@@ -14,7 +18,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { emoji } = await request.json();
+        const { emoji } = (await request.json()) as ReactionPayload;
 
         if (!emoji) {
             return NextResponse.json({ error: 'Emoji is required' }, { status: 400 });
@@ -57,7 +61,8 @@ export async function POST(
 
             return NextResponse.json({ action: 'added' });
         }
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

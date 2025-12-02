@@ -1,37 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Search, RefreshCw, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertSidebar } from "@/components/alerts/AlertSidebar";
 import { AlertItem } from "@/components/alerts/AlertItem";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
+import type {
+  Alert,
+  Notification,
+  NotificationPayload,
+  AlertFilter,
+} from "@/types/alerts";
 
-interface Alert {
-  id: number;
-  gmail_id: string;
-  from_email: string;
-  subject: string;
-  snippet: string;
-  received_at: string;
-  starred: boolean;
-  unread: boolean;
-}
+const SYNC_INTERVAL_MS = 60 * 1000;
 
-interface Notification {
-  id: string;
-  type: "space_invite" | "system";
-  title: string;
-  message: string;
-  data: any;
-  is_read: boolean;
-  created_at: string;
-}
+type NotificationApiResponse = Omit<Notification, "is_read" | "data"> & {
+  is_read?: boolean | null;
+  read?: boolean | null;
+  data?: NotificationPayload | null;
+};
 
 export default function AlertsPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState<AlertFilter>("all");
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,29 +32,34 @@ export default function AlertsPage() {
   const [search, setSearch] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (activeTab !== "all" && activeTab !== "notifications")
+      if (activeTab !== "all" && activeTab !== "notifications") {
         params.append("filter", activeTab);
-      if (search) params.append("q", search);
+      }
+      if (search) {
+        params.append("q", search);
+      }
 
       const res = await fetch(`/api/alerts?${params.toString()}`);
       const data = await res.json();
       if (data.alerts) {
-        setAlerts(data.alerts);
+        setAlerts(data.alerts as Alert[]);
       }
 
-      // Fetch Notifications
       const notifRes = await fetch("/api/notifications");
       const notifData = await notifRes.json();
       if (notifData.notifications) {
         setNotifications(
-          notifData.notifications.map((n: any) => ({
-            ...n,
-            is_read: n.read, // Map DB column 'read' to frontend 'is_read'
-          }))
+          notifData.notifications.map(
+            (notification: NotificationApiResponse): Notification => ({
+              ...notification,
+              data: notification.data ?? {},
+              is_read: notification.read ?? notification.is_read ?? false,
+            })
+          )
         );
       }
     } catch (error) {
@@ -69,9 +67,9 @@ export default function AlertsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, search]);
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setSyncing(true);
     try {
       await fetch("/api/alerts/sync", { method: "POST" });
@@ -81,60 +79,71 @@ export default function AlertsPage() {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [fetchAlerts]);
 
   useEffect(() => {
     fetchAlerts();
 
-    // Auto-sync every minute
     const interval = setInterval(() => {
-      handleSync();
-    }, 60 * 1000);
+      void handleSync();
+    }, SYNC_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [activeTab, search]);
+  }, [fetchAlerts, handleSync]);
 
-  const handleAcceptInvite = async (notification: Notification) => {
-    try {
-      // 1. Join Space
-      const res = await fetch(
-        `/api/spaces/${notification.data.space_slug}/join`,
-        {
-          method: "POST",
-        }
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to join space");
+  const handleAcceptInvite = useCallback(
+    async (notification: Notification) => {
+      const spaceSlug = notification.data?.space_slug;
+      if (!spaceSlug) {
+        alert("This invite is missing space information.");
+        return;
       }
 
-      // 2. Mark Notification as Read
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: notification.id, is_read: true }),
-      });
+      try {
+        const res = await fetch(`/api/spaces/${spaceSlug}/join`, {
+          method: "POST",
+        });
 
-      alert("Successfully joined space!");
-      fetchAlerts(); // Refresh
-    } catch (error: any) {
-      alert(error.message);
-    }
-  };
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Failed to join space");
+        }
 
-  const unreadCount = alerts.filter((a) => a.unread).length;
-  const notificationCount = notifications.filter((n) => !n.is_read).length;
+        // Mark notification as read
+        await fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: notification.id, is_read: true }),
+        });
+
+        // Optimistically update the notification state immediately
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, is_read: true } : n
+          )
+        );
+
+        alert("Successfully joined space!");
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to join space";
+        alert(message);
+      }
+    },
+    []
+  );
+
+  const unreadCount = alerts.filter((alert) => alert.unread).length;
+  const notificationCount = notifications.filter((notification) => !notification.is_read).length;
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header */}
       <header className="h-16 border-b border-white/10 flex items-center px-4 gap-4 bg-[#18181B]">
         <Button
           variant="ghost"
           size="icon"
           className="md:hidden"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          aria-pressed={isSidebarOpen}
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -162,7 +171,6 @@ export default function AlertsPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <AlertSidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -170,29 +178,26 @@ export default function AlertsPage() {
           notificationCount={notificationCount}
         />
 
-        {/* Main Content */}
         <main className="flex-1 overflow-y-auto bg-[#0E0E10] rounded-tl-2xl border-l border-t border-white/5 mt-2 mr-2 mb-2 p-0">
           {activeTab === "notifications" ? (
             <div className="p-4 space-y-2">
               {notifications.length === 0 ? (
-                <div className="text-center py-20 text-gray-500">
-                  No notifications
-                </div>
+                <div className="text-center py-20 text-gray-500">No notifications</div>
               ) : (
-                notifications.map((n) => (
+                notifications.map((notification) => (
                   <div
-                    key={n.id}
+                    key={notification.id}
                     className={cn(
                       "p-4 rounded-lg border border-white/5 flex items-center justify-between",
-                      !n.is_read ? "bg-[#18181B]" : "opacity-70"
+                      !notification.is_read ? "bg-[#18181B]" : "opacity-70"
                     )}
                   >
                     <div>
-                      <h3 className="font-bold text-white">{n.title}</h3>
-                      <p className="text-gray-400 text-sm">{n.message}</p>
+                      <h3 className="font-bold text-white">{notification.title}</h3>
+                      <p className="text-gray-400 text-sm">{notification.message}</p>
                     </div>
-                    {n.type === "space_invite" &&
-                      (n.is_read ? (
+                    {notification.type === "space_invite" &&
+                      (notification.is_read ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -204,7 +209,7 @@ export default function AlertsPage() {
                       ) : (
                         <Button
                           size="sm"
-                          onClick={() => handleAcceptInvite(n)}
+                          onClick={() => handleAcceptInvite(notification)}
                           className="bg-primary text-white hover:bg-primary/90"
                         >
                           Accept
@@ -217,13 +222,9 @@ export default function AlertsPage() {
           ) : (
             <div className="divide-y divide-white/5">
               {loading ? (
-                <div className="text-center py-20 text-gray-500">
-                  Loading...
-                </div>
+                <div className="text-center py-20 text-gray-500">Loading...</div>
               ) : alerts.length === 0 ? (
-                <div className="text-center py-20 text-gray-500">
-                  No messages found
-                </div>
+                <div className="text-center py-20 text-gray-500">No messages found</div>
               ) : (
                 <AnimatePresence>
                   {alerts.map((alert) => (
@@ -231,10 +232,11 @@ export default function AlertsPage() {
                       key={alert.id}
                       alert={alert}
                       onToggleStar={async (id) => {
-                        // Optimistic update
-                        setAlerts(
-                          alerts.map((a) =>
-                            a.id === id ? { ...a, starred: !a.starred } : a
+                        setAlerts((prev) =>
+                          prev.map((existing) =>
+                            existing.id === id
+                              ? { ...existing, starred: !existing.starred }
+                              : existing
                           )
                         );
                         try {
@@ -245,10 +247,11 @@ export default function AlertsPage() {
                           });
                         } catch (error) {
                           console.error("Failed to toggle star", error);
-                          // Revert on error
-                          setAlerts(
-                            alerts.map((a) =>
-                              a.id === id ? { ...a, starred: !a.starred } : a
+                          setAlerts((prev) =>
+                            prev.map((existing) =>
+                              existing.id === id
+                                ? { ...existing, starred: !existing.starred }
+                                : existing
                             )
                           );
                         }

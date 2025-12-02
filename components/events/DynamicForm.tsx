@@ -5,11 +5,18 @@ import { Button } from "@/components/ui/Button";
 import { Loader2, Upload } from "lucide-react";
 import { FormField } from "./FormBuilder";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
+import type {
+  EventRegistrationFormData,
+  EventRegistrationFormValue,
+} from "@/types/events";
+
+export type FormValue = EventRegistrationFormValue;
+export type FormState = EventRegistrationFormData;
 
 interface DynamicFormProps {
   schema: FormField[];
   eventId: string;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: FormState) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -19,11 +26,11 @@ export function DynamicForm({
   onSubmit,
   isSubmitting = false,
 }: DynamicFormProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<FormState>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const supabase = createBrowserSupabase();
 
-  const handleChange = (id: string, value: any) => {
+  const handleChange = (id: string, value: FormValue) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
@@ -50,8 +57,8 @@ export function DynamicForm({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     // Basic validation
     for (const field of schema) {
       if (field.required && !formData[field.id]) {
@@ -82,7 +89,7 @@ export function DynamicForm({
               type="text"
               required={field.required}
               className="w-full px-3 py-2 bg-background border rounded-md"
-              onChange={(e) => handleChange(field.id, e.target.value)}
+              onChange={(event) => handleChange(field.id, event.target.value)}
             />
           )}
 
@@ -90,7 +97,7 @@ export function DynamicForm({
             <textarea
               required={field.required}
               className="w-full px-3 py-2 bg-background border rounded-md min-h-[100px]"
-              onChange={(e) => handleChange(field.id, e.target.value)}
+              onChange={(event) => handleChange(field.id, event.target.value)}
             />
           )}
 
@@ -99,7 +106,13 @@ export function DynamicForm({
               type="number"
               required={field.required}
               className="w-full px-3 py-2 bg-background border rounded-md"
-              onChange={(e) => handleChange(field.id, e.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                handleChange(
+                  field.id,
+                  value === "" ? "" : Number(value)
+                );
+              }}
             />
           )}
 
@@ -108,7 +121,7 @@ export function DynamicForm({
               type="date"
               required={field.required}
               className="w-full px-3 py-2 bg-background border rounded-md"
-              onChange={(e) => handleChange(field.id, e.target.value)}
+              onChange={(event) => handleChange(field.id, event.target.value)}
             />
           )}
 
@@ -116,7 +129,7 @@ export function DynamicForm({
             <select
               required={field.required}
               className="w-full px-3 py-2 bg-background border rounded-md"
-              onChange={(e) => handleChange(field.id, e.target.value)}
+              onChange={(event) => handleChange(field.id, event.target.value)}
               defaultValue=""
             >
               <option value="" disabled>
@@ -152,9 +165,9 @@ export function DynamicForm({
               {uploading[field.id] && (
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
-              {formData[field.id] && (
+              {typeof formData[field.id] === "string" && (
                 <a
-                  href={formData[field.id]}
+                  href={formData[field.id] as string}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-blue-500 hover:underline"

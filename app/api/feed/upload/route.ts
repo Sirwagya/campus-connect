@@ -1,5 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase-server";
+
+type UploadResponse =
+    | { url: string; type: string; path: string }
+    | { error: string };
 
 export async function POST(request: NextRequest) {
     try {
@@ -7,32 +11,33 @@ export async function POST(request: NextRequest) {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const formData = await request.formData();
-        const file = formData.get('file') as File;
+        const file = formData.get("file");
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        if (!(file instanceof File)) {
+            return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
         }
 
         // Validate file type/size
-        if (!file.type.startsWith('image/')) {
-            return NextResponse.json({ error: 'Only images are allowed' }, { status: 400 });
+        if (!file.type.startsWith("image/")) {
+            return NextResponse.json({ error: "Only images are allowed" }, { status: 400 });
         }
         if (file.size > 5 * 1024 * 1024) { // 5MB limit
-            return NextResponse.json({ error: 'File size too large (max 5MB)' }, { status: 400 });
+            return NextResponse.json({ error: "File size too large (max 5MB)" }, { status: 400 });
         }
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileExt = file.name.split(".").pop();
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const fileName = `${session.user.id}/${Date.now()}-${randomSuffix}.${fileExt}`;
 
         const { data, error } = await supabase
             .storage
-            .from('post-attachments')
+            .from("post-attachments")
             .upload(fileName, file, {
-                cacheControl: '3600',
+                cacheControl: "3600",
                 upsert: false
             });
 
@@ -43,17 +48,18 @@ export async function POST(request: NextRequest) {
 
         const { data: { publicUrl } } = supabase
             .storage
-            .from('post-attachments')
+            .from("post-attachments")
             .getPublicUrl(fileName);
 
-        return NextResponse.json({
+        return NextResponse.json<UploadResponse>({
             url: publicUrl,
-            type: 'image',
-            path: data.path
+            type: "image",
+            path: data.path,
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[Upload] Unexpected error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json<UploadResponse>({ error: message }, { status: 500 });
     }
 }

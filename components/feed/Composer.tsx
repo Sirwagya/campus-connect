@@ -1,28 +1,24 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { ImagePlus, X, Loader2, Send } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import type { FeedUser, FeedAttachment, FeedPost } from "@/types/feed";
 
 interface ComposerProps {
-  user: {
-    id: string;
-    name?: string;
-    avatar_url?: string;
-    email?: string;
-  };
-  onPostCreated: (post: any) => void;
+  user: FeedUser;
+  onPostCreated: (post: FeedPost) => void;
 }
 
 export function Composer({ user, onPostCreated }: ComposerProps) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<FeedAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +43,7 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
 
         if (!res.ok) throw new Error("Upload failed");
 
-        const data = await res.json();
+        const data = (await res.json()) as FeedAttachment;
         setAttachments((prev) => [...prev, data]);
       } catch (error) {
         console.error("Upload error:", error);
@@ -69,8 +65,9 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
     setIsSubmitting(true);
 
     // Optimistic post object
-    const optimisticPost = {
+    const optimisticPost: FeedPost = {
       id: `temp-${Date.now()}`,
+      body: content.trim(),
       content: content.trim(),
       created_at: new Date().toISOString(),
       user_id: user.id,
@@ -78,11 +75,14 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
         id: user.id,
         name: user.name || user.email?.split("@")[0],
         avatar_url: user.avatar_url,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
       },
+      attachments,
+      liked_by_user: false,
       likes_count: 0,
       comments_count: 0,
-      attachments: attachments,
-      liked_by_user: false,
       isOptimistic: true,
     };
 
@@ -104,7 +104,7 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
         throw new Error(error.error || "Failed to post");
       }
 
-      const { post } = await res.json();
+      await res.json();
 
       // Reset form
       setContent("");
@@ -122,7 +122,7 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
     <div className="mb-8 rounded-2xl bg-[#18181B]/50 backdrop-blur-sm border border-white/5 p-5 shadow-lg transition-all focus-within:ring-1 focus-within:ring-[#a970ff]/50 focus-within:bg-[#18181B]">
       <div className="flex gap-4">
         <Avatar className="h-11 w-11 border border-white/10 shadow-sm">
-          <AvatarImage src={user.avatar_url} alt={user.name || "User"} />
+          <AvatarImage src={user.avatar_url ?? undefined} alt={user.name || "User"} />
           <AvatarFallback>{user.name?.[0] || user.email?.[0] || "?"}</AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-4">
@@ -143,11 +143,15 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
                 className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
               >
                 {attachments.map((att, i) => (
-                  <div key={i} className="relative group shrink-0">
-                    <img
+                  <div key={att.url} className="relative group shrink-0">
+                    <Image
                       src={att.url}
-                      alt="Attachment"
+                      alt={att.name || "Attachment"}
+                      width={320}
+                      height={160}
+                      sizes="160px"
                       className="h-40 w-auto rounded-xl object-cover border border-white/10 shadow-md"
+                      unoptimized
                     />
                     <button
                       onClick={() => removeAttachment(i)}

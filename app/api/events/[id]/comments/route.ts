@@ -1,12 +1,23 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import type { Database } from "@/types/database";
+
+type CommentInsert = Database["public"]["Tables"]["event_comments"]["Insert"];
+type CommentRow = Database["public"]["Tables"]["event_comments"]["Row"];
+type CommentWithUser = CommentRow & {
+    user: {
+        id: string;
+        name: string | null;
+        avatar_url: string | null;
+    };
+};
 
 export async function POST(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
+        request: Request,
+        { params }: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createServerSupabase();
-    const { id } = await params;
+        const { id } = await params;
     const {
         data: { user },
     } = await supabase.auth.getUser();
@@ -16,30 +27,42 @@ export async function POST(
     }
 
     try {
-        const body = await request.json();
-        const { content, parent_id } = body;
+        const body = (await request.json()) as {
+          content?: string;
+          parent_id?: string | null;
+        };
+
+        if (!body.content?.trim()) {
+          return NextResponse.json(
+            { error: "Content is required" },
+            { status: 400 }
+          );
+        }
+
+        const payload: CommentInsert = {
+          event_id: id,
+          user_id: user.id,
+          body: body.content,
+          parent_id: body.parent_id || null,
+        };
 
         const { data: comment, error } = await supabase
             .from("event_comments")
-            .insert({
-                event_id: id,
-                user_id: user.id,
-                body: content,
-                parent_id: parent_id || null,
-            })
+            .insert(payload)
             .select("*, user:users(id, name, avatar_url)")
-            .single();
+            .single<CommentWithUser>();
 
         if (error) throw error;
 
         return NextResponse.json({ comment });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
 export async function GET(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createServerSupabase();
@@ -49,7 +72,8 @@ export async function GET(
         .from("event_comments")
         .select("*, user:users(id, name, avatar_url)")
         .eq("event_id", id)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .returns<CommentWithUser[]>();
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

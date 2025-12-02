@@ -1,30 +1,39 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import { EventReaction } from "@/types/events";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 
 interface EventReactionsProps {
   eventId: string;
-  currentUser: any;
+  currentUser?: { id: string } | null;
 }
 
-const REACTION_EMOJIS = ["👍", "❤️", "🎉", "🔥", "👏"];
+const REACTION_EMOJIS = ["👍", "❤️", "🎉", "🔥", "👏"] as const;
+type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+
+interface ReactionToggleResponse {
+  added: boolean;
+  error?: string;
+}
 
 export function EventReactions({ eventId, currentUser }: EventReactionsProps) {
-  const [reactions, setReactions] = useState<EventReaction[]>([]);
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [userReactions, setUserReactions] = useState<Set<string>>(new Set());
+  const initialCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        REACTION_EMOJIS.map((emoji) => [emoji, 0])
+      ) as Record<ReactionEmoji, number>,
+    []
+  );
 
-  useEffect(() => {
-    // Fetch initial reactions (we might want a dedicated endpoint for counts later)
-    // For now, we'll just assume we load them or start empty/optimistic
-  }, []);
+  const [counts, setCounts] = useState<Record<ReactionEmoji, number>>(initialCounts);
+  const [userReactions, setUserReactions] = useState<Set<ReactionEmoji>>(new Set());
 
-  const handleReaction = async (emoji: string) => {
-    if (!currentUser) return alert("Please login to react");
+  const handleReaction = async (emoji: ReactionEmoji) => {
+    if (!currentUser) {
+      alert("Please login to react");
+      return;
+    }
 
     // Optimistic update
     const isActive = userReactions.has(emoji);
@@ -35,27 +44,43 @@ export function EventReactions({ eventId, currentUser }: EventReactionsProps) {
       return next;
     });
 
+    const delta = isActive ? -1 : 1;
     setCounts((prev) => ({
       ...prev,
-      [emoji]: (prev[emoji] || 0) + (isActive ? -1 : 1),
+      [emoji]: Math.max((prev[emoji] ?? 0) + delta, 0),
     }));
 
     try {
-      await fetch(`/api/events/${eventId}/reactions`, {
+      const res = await fetch(`/api/events/${eventId}/reactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reaction: emoji }),
       });
+      const data = (await res.json()) as ReactionToggleResponse;
+
+      if (!res.ok || typeof data.added !== "boolean") {
+        throw new Error(data.error || "Failed to toggle reaction");
+      }
     } catch (error) {
       console.error("Error toggling reaction:", error);
-      // Revert on error (omitted for brevity)
+      // Revert optimistic update
+      setUserReactions((prev) => {
+        const next = new Set(prev);
+        if (isActive) next.add(emoji);
+        else next.delete(emoji);
+        return next;
+      });
+      setCounts((prev) => ({
+        ...prev,
+        [emoji]: Math.max((prev[emoji] ?? 0) - delta, 0),
+      }));
     }
   };
 
   return (
     <div className="flex flex-wrap gap-3">
       {REACTION_EMOJIS.map((emoji) => {
-        const count = counts[emoji] || 0;
+        const count = counts[emoji] ?? 0;
         const isActive = userReactions.has(emoji);
 
         return (

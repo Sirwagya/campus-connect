@@ -6,8 +6,10 @@ import { Textarea } from "@/components/ui/Textarea";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo, use } from "react";
+import Image from "next/image";
 import { Event } from "@/types/events";
+import type { EventParticipationType } from "@/types/events";
 import { FormBuilder, FormField } from "@/components/events/FormBuilder";
 import { notFound } from "next/navigation";
 
@@ -16,8 +18,9 @@ export default function EditEventPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const router = useRouter();
-  const supabase = createBrowserSupabase();
+  const supabase = useMemo(() => createBrowserSupabase(), []);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Event>>({});
@@ -29,68 +32,91 @@ export default function EditEventPage({
   const [formSchema, setFormSchema] = useState<FormField[]>([]);
   const [loadingSchema, setLoadingSchema] = useState(true);
 
-  useEffect(() => {
-    const init = async () => {
-      const { id } = await params;
-      setEventId(id);
-      fetchEvent(id);
-      fetchForm(id);
-    };
-    init();
-  }, [params]);
+  const isParticipationType = (
+    value: string
+  ): value is EventParticipationType =>
+    value === "solo" || value === "team" || value === "both";
 
-  const fetchForm = async (id: string) => {
+  const participationValue: EventParticipationType =
+    formData.participation_type &&
+    isParticipationType(formData.participation_type)
+      ? formData.participation_type
+      : "solo";
+  const showTeamSettings =
+    participationValue === "team" || participationValue === "both";
+
+  const fetchForm = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/events/${id}/form`);
-      const data = await res.json();
+      const data = (await res.json()) as { schema?: FormField[] };
       setFormSchema(data.schema || []);
     } catch (error) {
       console.error("Error fetching form:", error);
     } finally {
       setLoadingSchema(false);
     }
-  };
+  }, []);
 
-  const fetchEvent = async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("id", id)
-        .single();
+  const fetchEvent = useCallback(
+    async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from("events")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-      if (error) throw error;
-      if (!data) notFound();
+        if (error) throw error;
+        if (!data) notFound();
 
-      setFormData({
-        ...data,
-        start_ts: new Date(data.start_ts).toISOString().slice(0, 16), // Format for datetime-local
-        end_ts: data.end_ts
-          ? new Date(data.end_ts).toISOString().slice(0, 16)
-          : "",
-      });
+        const eventData = data as Event;
 
-      if (data.tags && Array.isArray(data.tags)) {
-        setTagsInput(data.tags.join(", "));
+        setFormData({
+          ...eventData,
+          start_ts: new Date(eventData.start_ts).toISOString().slice(0, 16), // Format for datetime-local
+          end_ts: eventData.end_ts
+            ? new Date(eventData.end_ts).toISOString().slice(0, 16)
+            : "",
+        });
+
+        if (eventData.tags && Array.isArray(eventData.tags)) {
+          setTagsInput(eventData.tags.join(", "));
+        }
+
+        if (eventData.image_path) {
+          setImagePreview(
+            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-banners/${eventData.image_path}`
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error);
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [supabase]
+  );
 
-      if (data.image_path) {
-        setImagePreview(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-banners/${data.image_path}`
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching event:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    setEventId(id);
+    void fetchEvent(id);
+    void fetchForm(id);
+  }, [id, fetchEvent, fetchForm]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleParticipationChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const { value } = event.target;
+    if (isParticipationType(value)) {
+      setFormData({ ...formData, participation_type: value });
     }
   };
 
@@ -138,9 +164,11 @@ export default function EditEventPage({
 
       router.push("/admin/events");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update event";
       console.error("Error updating event:", error);
-      alert(error.message);
+      alert(message);
     } finally {
       setIsSaving(false);
     }
@@ -156,8 +184,10 @@ export default function EditEventPage({
 
       if (!res.ok) throw new Error("Failed to save form");
       alert("Form saved successfully");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save form";
+      alert(message);
     }
   };
 
@@ -248,10 +278,11 @@ export default function EditEventPage({
           <div className="flex items-center gap-4">
             {imagePreview ? (
               <div className="relative w-32 h-20 rounded-lg overflow-hidden border">
-                <img
+                <Image
                   src={imagePreview}
                   alt="Preview"
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
                 <button
                   type="button"
@@ -341,20 +372,15 @@ export default function EditEventPage({
               <label className="text-sm font-medium">Type</label>
               <select
                 className="w-full px-3 py-2 bg-background border rounded-md"
-                value={formData.participation_type || "solo"}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    participation_type: e.target.value as any,
-                  })
-                }
+                value={participationValue}
+                onChange={handleParticipationChange}
               >
                 <option value="solo">Solo Only</option>
                 <option value="team">Team Only</option>
                 <option value="both">Solo & Team</option>
               </select>
             </div>
-            {formData.participation_type !== "solo" && (
+            {showTeamSettings && (
               <>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Min Team Size</label>

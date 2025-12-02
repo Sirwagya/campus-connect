@@ -42,7 +42,17 @@ export function calculateLevel(totalXP: number) {
     };
 }
 
-export function calculateTotalXP(stats: any): { total: number; components: XPComponents } {
+interface CodingStats {
+    github_contributions?: number;
+    leetcode_problems?: number;
+    codeforces_rating?: number;
+    codechef_rating?: number;
+    hackerrank_badges?: number;
+    event_participations?: number;
+    skill_endorsements?: number;
+}
+
+export function calculateTotalXP(stats: CodingStats): { total: number; components: XPComponents } {
     // XP Formula:
     // XP = GitHub_Active_Days * 2 +
     //      LeetCode_Problems * 1 +

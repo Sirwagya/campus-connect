@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { PostCard } from "./PostCard";
-import { Button } from "@/components/ui/Button";
 import { Loader2 } from "lucide-react";
+import type { FeedPost, FeedUser } from "@/types/feed";
 
 interface PostListProps {
-  posts: any[];
+  posts: FeedPost[];
   currentUserId?: string;
-  currentUser?: any; // Added
+  currentUser?: FeedUser;
   onLoadMore: () => void;
   hasMore: boolean;
   loading: boolean;
@@ -25,6 +25,9 @@ export function PostList({
   const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const target = observerTarget.current;
+    if (!target) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
@@ -34,14 +37,11 @@ export function PostList({
       { threshold: 1.0 }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
+    observer.observe(target);
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
+      observer.unobserve(target);
+      observer.disconnect();
     };
   }, [hasMore, loading, onLoadMore]);
 
@@ -66,7 +66,7 @@ export function PostList({
 
       {!loading && !hasMore && posts.length > 0 && (
         <div className="p-8 text-center text-muted-foreground text-sm">
-          You've reached the end!
+          You&apos;ve reached the end!
         </div>
       )}
 

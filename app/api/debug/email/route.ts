@@ -1,7 +1,16 @@
-import { supabaseAdmin } from '@/lib/supabase-server';
-import { NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import { getValidAccessToken } from '@/lib/gmail-tokens';
+import { supabaseAdmin } from "@/lib/supabase-server";
+import { NextResponse } from "next/server";
+import { google } from "googleapis";
+import type { gmail_v1 } from "googleapis";
+import { getValidAccessToken } from "@/lib/gmail-tokens";
+
+type MessagePartSummary = {
+    mimeType?: string | null;
+    bodySize?: number | null;
+    dataPresent: boolean;
+    attachmentId?: string | null;
+    parts: MessagePartSummary[];
+};
 
 export async function GET() {
     // Use admin client to bypass RLS for debugging
@@ -35,15 +44,16 @@ export async function GET() {
         });
 
         // Helper to summarize structure
-        const summarizeParts = (parts: any[] = []): any[] => {
-            return parts.map(p => ({
-                mimeType: p.mimeType,
-                bodySize: p.body?.size,
-                dataPresent: !!p.body?.data,
-                attachmentId: p.body?.attachmentId,
-                parts: summarizeParts(p.parts)
+        const summarizeParts = (
+            parts: gmail_v1.Schema$MessagePart[] = []
+        ): MessagePartSummary[] =>
+            parts.map(part => ({
+                mimeType: part.mimeType,
+                bodySize: part.body?.size ?? null,
+                dataPresent: Boolean(part.body?.data),
+                attachmentId: part.body?.attachmentId ?? null,
+                parts: summarizeParts(part.parts ?? []),
             }));
-        };
 
         return NextResponse.json({
             db_info: email,
@@ -53,7 +63,9 @@ export async function GET() {
             }
         });
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        const stack = error instanceof Error ? error.stack : undefined;
+        return NextResponse.json({ error: message, stack }, { status: 500 });
     }
 }

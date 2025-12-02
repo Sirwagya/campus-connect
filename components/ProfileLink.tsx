@@ -7,7 +7,6 @@ import { useState } from "react";
 
 interface ProfileLinkProps {
   userId: string;
-  username?: string; // Optional, can be used for URL if we switch to /profile/[username]
   displayName?: string;
   avatarUrl?: string | null;
   className?: string;
@@ -18,7 +17,6 @@ interface ProfileLinkProps {
 
 export function ProfileLink({
   userId,
-  username,
   displayName,
   avatarUrl,
   className,
@@ -27,13 +25,6 @@ export function ProfileLink({
   children,
 }: ProfileLinkProps) {
   const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    // Prefetch profile data
-    // Next.js Link automatically prefetches the page, but we can also warm up the API cache
-    // fetch(`/api/profiles/${userId}?prefetch=true`, { priority: 'low' });
-  };
 
   const sizeClasses = {
     sm: "h-6 w-6 text-xs",
@@ -48,7 +39,8 @@ export function ProfileLink({
         "inline-flex items-center gap-2 font-medium hover:text-primary transition-colors",
         className
       )}
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => e.stopPropagation()} // Prevent bubbling if inside a clickable card
     >
       {showAvatar && (

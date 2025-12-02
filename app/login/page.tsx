@@ -36,9 +36,14 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-white text-black p-4">
       <Card className="w-full max-w-md border-black shadow-none rounded-sm">
         <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-2xl font-bold tracking-tight">
-            Campus Connect
-          </CardTitle>
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="h-10 w-10 bg-[#a970ff] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(169,112,255,0.3)]">
+              <span className="font-bold text-white text-xl">V</span>
+            </div>
+            <span className="text-2xl font-bold tracking-tight text-white">
+              Ved Hub
+            </span>
+          </div>
           <CardDescription className="text-gray-500">
             Exclusive to Vedam School of Technology
           </CardDescription>

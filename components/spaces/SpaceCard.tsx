@@ -1,11 +1,9 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
 import {
   Users,
   Lock,
-  Hash,
   MessageSquare,
   MoreVertical,
   Pencil,
@@ -23,10 +21,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { Button } from "@/components/ui/Button";
-import { useState } from "react";
+import { useState, MouseEvent } from "react";
 import { EditSpaceModal } from "./EditSpaceModal";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/Badge";
+import Image from "next/image";
 
 interface SpaceCardProps {
   space: Space;
@@ -38,8 +37,8 @@ export function SpaceCard({ space, isAdmin, onDelete }: SpaceCardProps) {
   const router = useRouter();
   const [showEdit, setShowEdit] = useState(false);
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = async (event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
     if (
       !confirm(
         `Are you sure you want to delete "${space.name}"? This action cannot be undone.`
@@ -94,10 +93,18 @@ export function SpaceCard({ space, isAdmin, onDelete }: SpaceCardProps) {
           {/* Banner Area */}
           <div
             className={cn(
-              "h-32 w-full bg-gradient-to-br relative",
-              getGradient(space.name)
+              "h-32 w-full relative overflow-hidden",
+              !space.banner_url && `bg-gradient-to-br ${getGradient(space.name)}`
             )}
           >
+            {space.banner_url && (
+              <Image
+                src={space.banner_url}
+                alt={`${space.name} banner`}
+                fill
+                className="object-cover"
+              />
+            )}
             <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
 
             {/* Badges */}
@@ -143,7 +150,7 @@ export function SpaceCard({ space, isAdmin, onDelete }: SpaceCardProps) {
                         <Pencil className="mr-2 h-4 w-4" /> Edit Space
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={(e) => handleDelete(e as any)}
+                        onClick={(event) => event && handleDelete(event as React.MouseEvent<HTMLElement>)}
                         className="text-red-500 focus:text-red-500 hover:bg-red-500/10 cursor-pointer"
                       >
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Space
@@ -158,8 +165,17 @@ export function SpaceCard({ space, isAdmin, onDelete }: SpaceCardProps) {
           <div className="p-5 flex-1 flex flex-col relative">
             {/* Space Icon/Avatar */}
             <div className="absolute -top-10 left-5">
-              <div className="h-20 w-20 rounded-2xl bg-[#18181B] border-4 border-[#131313] flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform duration-300">
-                <span className="text-3xl font-bold text-primary">#</span>
+              <div className="h-20 w-20 rounded-2xl bg-[#18181B] border-4 border-[#131313] flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                {space.icon_url ? (
+                  <Image
+                    src={space.icon_url}
+                    alt={`${space.name} icon`}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl font-bold text-primary">#</span>
+                )}
               </div>
             </div>
 
@@ -195,9 +211,9 @@ export function SpaceCard({ space, isAdmin, onDelete }: SpaceCardProps) {
                     ?
                   </div>
                 ))}
-                {space.member_count > 3 && (
+                {(space.member_count ?? 0) > 3 && (
                   <div className="h-7 w-7 rounded-full bg-[#27272a] border-2 border-[#131313] flex items-center justify-center text-[10px] text-gray-400 font-medium">
-                    +{space.member_count - 3}
+                    +{(space.member_count ?? 0) - 3}
                   </div>
                 )}
               </div>

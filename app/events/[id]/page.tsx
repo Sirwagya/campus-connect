@@ -45,7 +45,7 @@ export default async function EventDetailPage({
 
   const startDate = new Date(event.start_ts);
   const endDate = event.end_ts ? new Date(event.end_ts) : null;
-  const isFull = event.capacity && event.participants_count >= event.capacity;
+  const isFull = event.capacity && (event.participants_count ?? 0) >= event.capacity;
 
   return (
     <div className="min-h-screen bg-[#000000] text-white pb-20">
@@ -118,7 +118,7 @@ export default async function EventDetailPage({
                       className="bg-primary h-full transition-all duration-500"
                       style={{
                         width: `${Math.min(
-                          (event.participants_count / event.capacity) * 100,
+                          ((event.participants_count ?? 0) / event.capacity) * 100,
                           100
                         )}%`,
                       }}
@@ -128,7 +128,7 @@ export default async function EventDetailPage({
 
                 {event.capacity && (
                   <p className="text-center text-sm text-muted-foreground">
-                    {event.capacity - event.participants_count} spots remaining
+                    {event.capacity - (event.participants_count ?? 0)} spots remaining
                   </p>
                 )}
               </div>

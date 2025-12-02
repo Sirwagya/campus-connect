@@ -40,6 +40,13 @@ export async function GET(request: Request) {
     const expiresIn = 3600 // Default to 1 hour
     const tokenExpiry = Date.now() + expiresIn * 1000 // Unix timestamp in milliseconds
 
+    // Ensure we have email
+    const userEmail = user.email;
+    if (!userEmail) {
+      console.error('No email found for user');
+      return NextResponse.redirect(`${requestUrl.origin}/login?error=No email found`);
+    }
+
     // Store tokens in database (upsert to create user if needed)
     // Use supabaseAdmin to bypass RLS policies for insert/update
     const { error: updateError } = await supabaseAdmin
@@ -47,7 +54,7 @@ export async function GET(request: Request) {
       .upsert(
         {
           id: user.id,
-          email: user.email,
+          email: userEmail,
           full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
           avatar_url: user.user_metadata?.avatar_url || null,
           google_access_token: providerToken,

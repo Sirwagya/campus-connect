@@ -1,32 +1,52 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import {
-  Github,
-  Code,
-  Trophy,
-  Terminal,
-  ExternalLink,
-  TrendingUp,
-  Award,
-} from "lucide-react";
+import { Code, Trophy, Terminal, TrendingUp, Award } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import { GitHubHeatmap } from "./GitHubHeatmap";
 
 interface IntegrationsPanelProps {
-  profile: any;
+  profile: {
+    id: string;
+    social_links?: {
+      github?: string;
+      [key: string]: string | undefined;
+    };
+    stats?: {
+      total_commits?: number;
+      current_streak?: number;
+      leetcode_solved?: number;
+      leetcode_ranking?: number;
+      codeforces_rating?: number;
+      codeforces_rank?: string;
+      hackerrank_badges?: number;
+      codechef_rating?: number;
+    };
+    integrations?: Array<{
+      platform: string;
+      username: string;
+    }>;
+  };
+  isOwner?: boolean;
 }
 
-export function IntegrationsPanel({ profile }: IntegrationsPanelProps) {
+export function IntegrationsPanel({
+  profile,
+  isOwner = false,
+}: IntegrationsPanelProps) {
   const { stats, integrations } = profile;
-  const username = profile.username || profile.user?.username || "user";
+
+  // Get GitHub URL from social_links or integrations
+  const githubUrl =
+    profile.social_links?.github ||
+    integrations?.find((i) => i.platform === "github")?.username;
 
   // Platform Colors
   const colors = {
     leetcode: "text-[#ffa116]",
-    codeforces: "text-[#1f8acb]", // Blue/Red depending on rank, default blue
+    codeforces: "text-[#1f8acb]",
     hackerrank: "text-[#2ec866]",
     codechef: "text-[#5b4638]",
     github: "text-white",
@@ -49,67 +69,18 @@ export function IntegrationsPanel({ profile }: IntegrationsPanelProps) {
 
   return (
     <div className="space-y-6">
-      {/* GitHub Contribution Graph */}
+      {/* GitHub Contribution Graph - Using ghchart.rshah.org (No API Key Required) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="bg-[#181818] border-none shadow-lg overflow-hidden group hover:bg-[#202020] transition-colors">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-              <Github className="h-5 w-5" />
-              GitHub Contributions
-            </CardTitle>
-            {profile.social_links?.github && (
-              <Link
-                href={profile.social_links.github}
-                target="_blank"
-                className="text-xs text-muted-foreground hover:text-white flex items-center gap-1"
-              >
-                View Profile <ExternalLink className="h-3 w-3" />
-              </Link>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
-              <div className="min-w-[700px]">
-                {/* SVG Graph Proxy */}
-                <img
-                  src={`/api/profiles/${profile.id}/graph/github`}
-                  alt="GitHub Graph"
-                  className="w-full h-auto rounded-md opacity-80 group-hover:opacity-100 transition-opacity"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wider">
-                    Total
-                  </span>
-                  <span className="text-white font-mono font-bold">
-                    {stats?.total_commits || 0}
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wider">
-                    Streak
-                  </span>
-                  <span className="text-white font-mono font-bold">
-                    {stats?.current_streak || 0} days
-                  </span>
-                </div>
-              </div>
-              <div className="text-xs">
-                Last updated: {new Date().toLocaleDateString()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <GitHubHeatmap
+          githubUrl={githubUrl}
+          userId={profile.id}
+          isOwner={isOwner}
+          colorScheme="green"
+        />
       </motion.div>
 
       {/* Coding Stats Grid */}

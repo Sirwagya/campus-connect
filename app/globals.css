@@ -1,36 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* Spotify/GitHub Dark Theme */
-  --background: #000000;
-  --foreground: #f2f2f2;
+  /* Premium Dark Theme (Spotify x GitHub) */
+  --background: #0d0d0f; /* Deepest black/gray */
+  --foreground: #ffffff;
 
-  --card: #131313;
-  --card-foreground: #f2f2f2;
+  --card: #18181b; /* Slightly lighter for cards */
+  --card-foreground: #ffffff;
 
   --popover: #18181b;
-  --popover-foreground: #f2f2f2;
+  --popover-foreground: #ffffff;
 
-  --primary: #9b5cff;
+  --primary: #a970ff; /* Vivid Purple Accent */
   --primary-foreground: #ffffff;
 
   --secondary: #27272a;
-  --secondary-foreground: #f2f2f2;
+  --secondary-foreground: #ffffff;
 
   --muted: #27272a;
-  --muted-foreground: #a3a3a3;
+  --muted-foreground: #a1a1aa;
 
-  --accent: #9b5cff;
+  --accent: #a970ff;
   --accent-foreground: #ffffff;
 
-  --destructive: #ff4a4a;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #1f1f1f;
-  --input: #1f1f1f;
-  --ring: #9b5cff;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #a970ff;
 
-  --radius: 0.5rem;
+  --radius: 0.75rem; /* Slightly more rounded */
 }
 
 @theme inline {
@@ -67,4 +67,11 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }

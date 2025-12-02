@@ -4,8 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Briefcase, GraduationCap, User } from "lucide-react";
 import { motion } from "framer-motion";
 
+interface Experience {
+  role: string;
+  company: string;
+  start_date: string;
+  end_date?: string | null;
+  description?: string;
+}
+
+interface Education {
+  degree: string;
+  institution: string;
+  start_year: string;
+  end_year?: string | null;
+}
+
+interface Profile {
+  bio?: string | null;
+  experience?: Experience[];
+  education?: Education[];
+}
+
 interface ProfileAboutProps {
-  profile: any;
+  profile: Profile;
 }
 
 export function ProfileAbout({ profile }: ProfileAboutProps) {
@@ -61,7 +82,7 @@ export function ProfileAbout({ profile }: ProfileAboutProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {experience.map((exp: any, i: number) => (
+              {experience.map((exp, i: number) => (
                 <div
                   key={i}
                   className="relative pl-6 border-l border-white/10 last:border-0"
@@ -91,7 +112,7 @@ export function ProfileAbout({ profile }: ProfileAboutProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {education.map((edu: any, i: number) => (
+              {education.map((edu, i: number) => (
                 <div
                   key={i}
                   className="relative pl-6 border-l border-white/10 last:border-0"

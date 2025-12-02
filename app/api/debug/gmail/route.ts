@@ -1,7 +1,32 @@
-import { NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
-import { getGmailTokens } from '@/lib/gmail-tokens';
-import { listMessages } from '@/lib/gmail';
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase-server";
+import { getGmailTokens } from "@/lib/gmail-tokens";
+import { listMessages } from "@/lib/gmail";
+
+type GmailDebugResponse = {
+  authenticated: boolean;
+  user?: {
+    id: string;
+    email: string | undefined;
+  };
+  tokens?: {
+    hasAccessToken: boolean;
+    hasRefreshToken: boolean;
+    expiry: string | null;
+    isExpired: boolean | null;
+  };
+  gmail?: {
+    connectivity: string;
+    messageCount: number;
+  };
+  scopes?: {
+    expected: string[];
+    note: string;
+  };
+  nextSteps?: string[];
+  error?: string;
+  stack?: string;
+};
 
 export async function GET() {
   try {
@@ -33,12 +58,13 @@ export async function GET() {
         const messages = await listMessages(userId, 1);
         messageCount = messages.length;
         gmailConnectivity = 'SUCCESS';
-      } catch (error: any) {
-        gmailConnectivity = `FAILED: ${error.message}`;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        gmailConnectivity = `FAILED: ${message}`;
       }
     }
 
-    return NextResponse.json({
+    const response: GmailDebugResponse = {
       authenticated: true,
       user: {
         id: userId,
@@ -67,11 +93,17 @@ export async function GET() {
       nextSteps: tokens
         ? ['Tokens present', 'Try calling /api/alerts/sync']
         : ['No tokens found', 'Re-login to get tokens'],
-    });
-  } catch (error: any) {
-    return NextResponse.json({
-      error: error.message,
-      stack: error.stack,
-    }, { status: 500 });
+    };
+
+    return NextResponse.json(response);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const stack = error instanceof Error ? error.stack : undefined;
+    const response: GmailDebugResponse = {
+      authenticated: false,
+      error: message,
+      stack,
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 }

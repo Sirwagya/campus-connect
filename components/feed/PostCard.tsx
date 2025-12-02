@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import {
-  Heart,
   MessageCircle,
   Share2,
   MoreHorizontal,
   Trash2,
+  Bookmark,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CommentList } from "./CommentList";
+import { ReactionButton, ReactionSummary } from "./ReactionButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,45 +23,19 @@ import {
 } from "@/components/ui/DropdownMenu";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import type { FeedPost, FeedUser } from "@/types/feed";
 
 interface PostCardProps {
-  post: any;
+  post: FeedPost;
   currentUserId?: string;
-  currentUser?: any;
+  currentUser?: FeedUser;
 }
 
 export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
-  const [liked, setLiked] = useState(post.liked_by_user);
-  const [likesCount, setLikesCount] = useState(post.likes_count);
   const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
-  const [isLiking, setIsLiking] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
-
-  const handleLike = async () => {
-    if (isLiking) return;
-
-    const newLiked = !liked;
-    setLiked(newLiked);
-    setLikesCount((prev: number) => (newLiked ? prev + 1 : prev - 1));
-    setIsLiking(true);
-
-    try {
-      const res = await fetch("/api/feed/like", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: post.id }),
-      });
-
-      if (!res.ok) throw new Error("Failed to like");
-    } catch (error) {
-      setLiked(!newLiked);
-      setLikesCount((prev: number) => (!newLiked ? prev + 1 : prev - 1));
-      console.error("Like error:", error);
-    } finally {
-      setIsLiking(false);
-    }
-  };
+  const [isSaved, setIsSaved] = useState(false);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -96,11 +72,15 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
     >
       <div className="flex gap-4">
         <Link href={`/profile/${post.user_id}`}>
-          <Avatar
-            src={post.user?.avatar_url}
-            fallback={post.user?.name?.[0] || post.user?.email?.[0] || "?"}
-            className="cursor-pointer hover:opacity-80 transition-opacity h-11 w-11 border border-white/10 shadow-sm"
-          />
+          <Avatar className="cursor-pointer hover:opacity-80 transition-opacity h-11 w-11 border border-white/10 shadow-sm">
+            <AvatarImage
+              src={post.user?.avatar_url || undefined}
+              alt={post.user?.name || post.user?.email || "User"}
+            />
+            <AvatarFallback>
+              {post.user?.name?.[0] || post.user?.email?.[0] || "?"}
+            </AvatarFallback>
+          </Avatar>
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1.5">
@@ -112,7 +92,7 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
                 {post.user?.full_name || post.user?.name || "Unknown"}
               </Link>
               <span className="text-gray-500 text-sm">
-                @{post.user?.email?.split("@")[0]}
+                @{post.user?.email?.split("@")[0] || "anonymous"}
               </span>
               <span className="text-gray-600">·</span>
               <span className="text-gray-500 text-xs hover:underline cursor-pointer">
@@ -170,67 +150,81 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
                 post.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2"
               )}
             >
-              {post.attachments.map((att: any, i: number) => (
-                <img
-                  key={i}
+              {post.attachments.map((att, i: number) => (
+                <Image
+                  key={`${att.url}-${i}`}
                   src={att.url}
-                  alt="Attachment"
+                  alt={att.name || "Attachment"}
+                  width={800}
+                  height={600}
+                  sizes="(max-width: 768px) 100vw, 720px"
                   className="w-full h-auto object-cover max-h-[500px] bg-black/50 hover:scale-[1.02] transition-transform duration-500"
+                  unoptimized
                 />
               ))}
             </div>
           )}
 
-          <div className="flex items-center gap-6 mt-2">
+          {/* Reaction Summary */}
+          <ReactionSummary targetType="post" targetId={post.id} className="mb-2" />
+
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2">
+              {/* Reactions */}
+              <ReactionButton targetType="post" targetId={post.id} />
+
+              {/* Comments */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowComments(!showComments)}
+                className={cn(
+                  "group hover:bg-blue-500/10 hover:text-blue-400 p-0 h-8 w-auto min-w-[2rem] rounded-full flex gap-2 px-3 text-gray-500 transition-all",
+                  showComments && "text-blue-400"
+                )}
+              >
+                <MessageCircle
+                  className={cn(
+                    "h-4 w-4 group-hover:scale-110 transition-transform",
+                    showComments && "fill-current"
+                  )}
+                />
+                <span className="text-xs font-medium">
+                  {commentsCount > 0 ? commentsCount : ""}
+                </span>
+              </Button>
+
+              {/* Share */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="group hover:bg-green-500/10 hover:text-green-400 p-0 h-8 w-auto min-w-[2rem] rounded-full flex gap-2 px-3 text-gray-500 transition-all"
+              >
+                <Share2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium">
+                  {post.shares_count && post.shares_count > 0
+                    ? post.shares_count
+                    : ""}
+                </span>
+              </Button>
+            </div>
+
+            {/* Save/Bookmark */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowComments(!showComments)}
+              onClick={() => setIsSaved(!isSaved)}
               className={cn(
-                "group hover:bg-blue-500/10 hover:text-blue-400 p-0 h-8 w-auto min-w-[2rem] rounded-full flex gap-2 px-2 text-gray-500 transition-all",
-                showComments && "text-blue-400"
+                "group hover:bg-yellow-500/10 hover:text-yellow-400 p-0 h-8 w-8 rounded-full text-gray-500 transition-all",
+                isSaved && "text-yellow-400"
               )}
             >
-              <MessageCircle
+              <Bookmark
                 className={cn(
-                  "h-4.5 w-4.5 group-hover:scale-110 transition-transform",
-                  showComments && "fill-current"
+                  "h-4 w-4 group-hover:scale-110 transition-transform",
+                  isSaved && "fill-current"
                 )}
               />
-              <span className="text-xs font-medium">
-                {commentsCount > 0 ? commentsCount : ""}
-              </span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLike}
-              className={cn(
-                "group hover:bg-pink-500/10 hover:text-pink-400 p-0 h-8 w-auto min-w-[2rem] rounded-full flex gap-2 px-2 text-gray-500 transition-all",
-                liked && "text-pink-400"
-              )}
-            >
-              <Heart
-                className={cn(
-                  "h-4.5 w-4.5 group-hover:scale-110 transition-transform",
-                  liked && "fill-current"
-                )}
-              />
-              <span className="text-xs font-medium">
-                {likesCount > 0 ? likesCount : ""}
-              </span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="group hover:bg-green-500/10 hover:text-green-400 p-0 h-8 w-auto min-w-[2rem] rounded-full flex gap-2 px-2 text-gray-500 transition-all"
-            >
-              <Share2 className="h-4.5 w-4.5 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-medium">
-                {post.shares_count > 0 ? post.shares_count : ""}
-              </span>
             </Button>
           </div>
 

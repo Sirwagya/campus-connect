@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, supabaseAdmin } from '@/lib/supabase-server';
+import type { Database } from '@/types/database';
+
+type SpaceMemberInsert = Database['public']['Tables']['space_members']['Insert'];
+
+const buildErrorResponse = (error: unknown, status = 500) => {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
+};
 
 export async function POST(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: Promise<{ slug: string }> }
 ) {
     try {
@@ -68,7 +76,7 @@ export async function POST(
                 space_id: space.id,
                 user_id: session.user.id,
                 role: 'member'
-            });
+            } satisfies SpaceMemberInsert);
 
         if (joinError) {
             if (joinError.code === '23505') { // Unique violation
@@ -82,7 +90,7 @@ export async function POST(
         await supabaseAdmin.rpc('increment_space_member_count', { space_id: space.id });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }

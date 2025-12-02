@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import type { Database } from '@/types/database';
+
+type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
+
+type InvitePayload = {
+    email?: string;
+    userId?: string;
+};
+
+const buildErrorResponse = (error: unknown, status = 500) => {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
+};
 
 export async function POST(
     request: NextRequest,
@@ -14,10 +27,10 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { email } = await request.json();
+        const { email, userId } = (await request.json()) as InvitePayload;
 
-        if (!email) {
-            return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+        if (!email && !userId) {
+            return NextResponse.json({ error: 'Email or userId is required' }, { status: 400 });
         }
 
         // 1. Get Space Details
@@ -43,31 +56,35 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // 3. Find User by Email
-        // Note: We need to search the 'users' table (public profile)
-        // Assuming 'email' is in the users table or we have a way to look it up.
-        // If 'users' table doesn't have email (it usually doesn't for privacy), we might need to rely on exact match if we stored it,
-        // OR we might need to use an RPC function if we want to lookup by auth.users email (admin only).
-        // For this hackathon, let's assume the 'users' table has an 'email' column or we added it.
-        // If not, we'll try to match by 'name' or 'full_name' as a fallback, or ask user to provide username.
-        // Let's check if 'users' has email. If not, we might need to add it or use username.
+        // 3. Find User by userId, email, or name
+        let targetUser: { id: string; name: string | null } | null = null;
 
-        // Let's try to find by email in public.users first.
-        let { data: targetUser } = await supabase
-            .from('users')
-            .select('id, name')
-            .eq('email', email)
-            .single();
-
-        if (!targetUser) {
-            // Fallback: Try to find by username (name)
-            const { data: targetUserByName } = await supabase
+        // If userId is provided, use it directly
+        if (userId) {
+            const { data } = await supabase
                 .from('users')
                 .select('id, name')
-                .eq('name', email) // Treating input as username
+                .eq('id', userId)
                 .single();
+            targetUser = data;
+        } else if (email) {
+            // Try to find by email in public.users first
+            const { data: userByEmail } = await supabase
+                .from('users')
+                .select('id, name')
+                .eq('email', email)
+                .single();
+            targetUser = userByEmail;
 
-            targetUser = targetUserByName;
+            if (!targetUser) {
+                // Fallback: Try to find by username (name)
+                const { data: userByName } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .eq('name', email)
+                    .single();
+                targetUser = userByName;
+            }
         }
 
         if (!targetUser) {
@@ -100,14 +117,14 @@ export async function POST(
                     space_name: space.name,
                     inviter_id: session.user.id
                 }
-            });
+            } satisfies NotificationInsert);
 
         if (notifError) {
             throw notifError;
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }

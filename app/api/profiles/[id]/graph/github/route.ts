@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, supabaseAdmin } from '@/lib/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase-server';
 import { fetchGitHubStats } from '@/lib/profile/integrations/github';
 import { generateGitHubHeatmapSvg } from '@/lib/profile/integrations/github-svg';
 
@@ -10,42 +10,33 @@ export async function GET(
     try {
         const { id } = await params;
 
-        // 1. Get GitHub username from profile_integrations
-        // Use admin client to allow public viewing of graphs
-        const { data: integration, error } = await supabaseAdmin
-            .from('profile_integrations')
-            .select('username, platform_data')
-            .eq('user_id', id)
-            .eq('platform', 'github')
+        // 1. Single Source of Truth: Check social_links in profiles
+        // We prioritize this because the Edit Profile form saves directly here.
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('social_links')
+            .eq('id', id)
             .single();
 
-        if (error || !integration) {
-            // Fallback: Check if social_links in profiles has github
-            const { data: profile } = await supabaseAdmin
-                .from('profiles')
-                .select('social_links')
-                .eq('id', id)
-                .single();
+        let username: string | null = null;
+        const socialLinks = profile?.social_links as { github?: string } | null;
 
-            if (profile?.social_links?.github) {
-                // Extract username from URL
-                const url = profile.social_links.github;
-                const match = url.match(/github\.com\/([^\/]+)/);
-                if (match) {
-                    const username = match[1];
-                    const stats = await fetchGitHubStats(username);
-                    if (stats) {
-                        const svg = generateGitHubHeatmapSvg(stats);
-                        return new NextResponse(svg, {
-                            headers: {
-                                'Content-Type': 'image/svg+xml',
-                                'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-                            },
-                        });
-                    }
+        if (socialLinks?.github) {
+            // Extract username from URL
+            const url = socialLinks.github;
+            // Match patterns: github.com/username, github.com/username/, etc.
+            const match = url.match(/github\.com\/([^\/]+)/i);
+            if (match) {
+                username = match[1];
+            } else {
+                // Fallback: Check if it's a plain username
+                if (/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(url)) {
+                    username = url;
                 }
             }
+        }
 
+        if (!username) {
             return new NextResponse(
                 '<svg width="200" height="50" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" fill="#666" font-family="sans-serif">GitHub not connected</text></svg>',
                 { headers: { 'Content-Type': 'image/svg+xml' } }
@@ -53,7 +44,7 @@ export async function GET(
         }
 
         // 2. Fetch Stats
-        const stats = await fetchGitHubStats(integration.username);
+        const stats = await fetchGitHubStats(username);
 
         if (!stats) {
             return new NextResponse(
@@ -73,7 +64,7 @@ export async function GET(
             },
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[GitHub Graph API] Error:', error);
         return new NextResponse(
             '<svg width="200" height="50" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" fill="#666" font-family="sans-serif">Internal Error</text></svg>',

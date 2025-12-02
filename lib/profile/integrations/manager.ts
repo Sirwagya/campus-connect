@@ -4,6 +4,21 @@ import { fetchLeetCodeStats } from "./leetcode";
 import { fetchCodeforcesStats } from "./codeforces";
 import { calculateTotalXP, calculateLevel } from "../leveling";
 
+interface GitHubStats {
+    contributions?: number;
+    [key: string]: unknown;
+}
+
+interface LeetCodeStats {
+    totalSolved?: number;
+    [key: string]: unknown;
+}
+
+interface CodeforcesStats {
+    rating?: number;
+    [key: string]: unknown;
+}
+
 export async function syncProfileStats(userId: string) {
     const supabase = await createClient();
 
@@ -15,9 +30,9 @@ export async function syncProfileStats(userId: string) {
 
     if (!integrations || integrations.length === 0) return;
 
-    let githubStats: any = {};
-    let leetcodeStats: any = {};
-    let codeforcesStats: any = {};
+    let githubStats: GitHubStats = {};
+    let leetcodeStats: LeetCodeStats = {};
+    let codeforcesStats: CodeforcesStats = {};
 
     // 2. Sync each platform
     for (const integration of integrations) {
@@ -25,13 +40,13 @@ export async function syncProfileStats(userId: string) {
 
         if (integration.platform === "github") {
             newData = await fetchGitHubStats(integration.username);
-            if (newData) githubStats = newData;
+            if (newData) githubStats = newData as unknown as GitHubStats;
         } else if (integration.platform === "leetcode") {
             newData = await fetchLeetCodeStats(integration.username);
-            if (newData) leetcodeStats = newData;
+            if (newData) leetcodeStats = newData as unknown as LeetCodeStats;
         } else if (integration.platform === "codeforces") {
             newData = await fetchCodeforcesStats(integration.username);
-            if (newData) codeforcesStats = newData;
+            if (newData) codeforcesStats = newData as unknown as CodeforcesStats;
         }
 
         if (newData) {

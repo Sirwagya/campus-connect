@@ -1,17 +1,12 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Github, ExternalLink, Folder } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Project {
   id: string;
@@ -51,7 +46,7 @@ export function ProfileProjects({ projects }: ProfileProjectsProps) {
         </div>
         <h3 className="text-xl font-bold text-white mb-2">No Projects Yet</h3>
         <p className="text-muted-foreground max-w-md">
-          This user hasn't showcased any projects yet.
+          This user hasn&apos;t showcased any projects yet.
         </p>
       </div>
     );
@@ -70,10 +65,11 @@ export function ProfileProjects({ projects }: ProfileProjectsProps) {
             {/* Image Preview */}
             <div className="h-48 w-full bg-[#282828] relative overflow-hidden">
               {project.image_url ? (
-                <img
+                <Image
                   src={project.image_url}
                   alt={project.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#2a1b4e] to-[#121212]">

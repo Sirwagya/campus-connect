@@ -154,23 +154,28 @@ ALTER TABLE public.activity_timeline ENABLE ROW LEVEL SECURITY;
 -- POLICIES
 
 -- Profiles: Public read if visibility is public, Owner read/write
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles
   FOR SELECT USING (visibility = 'public' OR auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Integrations: Owner only (usually contains tokens or sensitive sync data, though we store tokens in users table mostly)
 -- Actually, we might want to show "Connected Accounts" on public profile? Let's allow public read for now if profile is public.
+DROP POLICY IF EXISTS "Public integrations viewable" ON public.profile_integrations;
 CREATE POLICY "Public integrations viewable" ON public.profile_integrations
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_integrations.user_id AND visibility = 'public')
     OR auth.uid() = user_id
   );
 
+DROP POLICY IF EXISTS "Users manage integrations" ON public.profile_integrations;
 CREATE POLICY "Users manage integrations" ON public.profile_integrations
   FOR ALL USING (auth.uid() = user_id);
 
@@ -180,46 +185,57 @@ CREATE POLICY "Users manage integrations" ON public.profile_integrations
 -- Helper macro for policies? No, let's write them out for clarity.
 
 -- Skills
+DROP POLICY IF EXISTS "Public skills viewable" ON public.profile_skills;
 CREATE POLICY "Public skills viewable" ON public.profile_skills
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_skills.user_id AND visibility = 'public')
     OR auth.uid() = user_id
   );
+DROP POLICY IF EXISTS "Users manage skills" ON public.profile_skills;
 CREATE POLICY "Users manage skills" ON public.profile_skills FOR ALL USING (auth.uid() = user_id);
 
 -- Projects
+DROP POLICY IF EXISTS "Public projects viewable" ON public.profile_projects;
 CREATE POLICY "Public projects viewable" ON public.profile_projects
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_projects.user_id AND visibility = 'public')
     OR auth.uid() = user_id
   );
+DROP POLICY IF EXISTS "Users manage projects" ON public.profile_projects;
 CREATE POLICY "Users manage projects" ON public.profile_projects FOR ALL USING (auth.uid() = user_id);
 
 -- Experience
+DROP POLICY IF EXISTS "Public experience viewable" ON public.profile_experience;
 CREATE POLICY "Public experience viewable" ON public.profile_experience
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_experience.user_id AND visibility = 'public')
     OR auth.uid() = user_id
   );
+DROP POLICY IF EXISTS "Users manage experience" ON public.profile_experience;
 CREATE POLICY "Users manage experience" ON public.profile_experience FOR ALL USING (auth.uid() = user_id);
 
 -- Education
+DROP POLICY IF EXISTS "Public education viewable" ON public.profile_education;
 CREATE POLICY "Public education viewable" ON public.profile_education
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_education.user_id AND visibility = 'public')
     OR auth.uid() = user_id
   );
+DROP POLICY IF EXISTS "Users manage education" ON public.profile_education;
 CREATE POLICY "Users manage education" ON public.profile_education FOR ALL USING (auth.uid() = user_id);
 
 -- Achievements
+DROP POLICY IF EXISTS "Public achievements viewable" ON public.profile_achievements;
 CREATE POLICY "Public achievements viewable" ON public.profile_achievements
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_achievements.user_id AND visibility = 'public')
     OR auth.uid() = user_id
   );
+DROP POLICY IF EXISTS "Users manage achievements" ON public.profile_achievements;
 CREATE POLICY "Users manage achievements" ON public.profile_achievements FOR ALL USING (auth.uid() = user_id);
 
 -- Badges
+DROP POLICY IF EXISTS "Public badges viewable" ON public.profile_badges;
 CREATE POLICY "Public badges viewable" ON public.profile_badges
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = profile_badges.user_id AND visibility = 'public')
@@ -233,12 +249,14 @@ CREATE POLICY "Public badges viewable" ON public.profile_badges
 -- If we run logic in Next.js API routes, we can use service role.
 -- So we don't need user write policies for badges if they are auto-awarded.
 -- However, for manual testing, let's allow users to manage for now, or admins.
+DROP POLICY IF EXISTS "Admins manage badges" ON public.profile_badges;
 CREATE POLICY "Admins manage badges" ON public.profile_badges
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
   );
 
 -- Coding Stats
+DROP POLICY IF EXISTS "Public stats viewable" ON public.coding_stats_unified;
 CREATE POLICY "Public stats viewable" ON public.coding_stats_unified
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = coding_stats_unified.user_id AND visibility = 'public')
@@ -247,6 +265,7 @@ CREATE POLICY "Public stats viewable" ON public.coding_stats_unified
 -- Stats are system updated.
 
 -- Timeline
+DROP POLICY IF EXISTS "Public timeline viewable" ON public.activity_timeline;
 CREATE POLICY "Public timeline viewable" ON public.activity_timeline
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = activity_timeline.user_id AND visibility = 'public')

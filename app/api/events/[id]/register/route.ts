@@ -1,5 +1,21 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import type { EventRegistrationPayload, TeamMemberInput } from "@/types/events";
+import type { Database } from "@/types/database";
+
+type EventRow = Database["public"]["Tables"]["events"]["Row"];
+
+const isTeamMemberInput = (candidate: unknown): candidate is TeamMemberInput => {
+    if (!candidate || typeof candidate !== "object") {
+        return false;
+    }
+    const member = candidate as Partial<TeamMemberInput>;
+    return (
+        typeof member.name === "string" &&
+        typeof member.email === "string" &&
+        typeof member.role === "string"
+    );
+};
 
 export async function POST(
     request: Request,
@@ -7,15 +23,38 @@ export async function POST(
 ) {
     const supabase = await createServerSupabase();
     const { id: eventId } = await params;
-    const body = await request.json();
+
+    let body: Partial<EventRegistrationPayload> = {};
+    try {
+        body = (await request.json()) as Partial<EventRegistrationPayload>;
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid request body";
+        return NextResponse.json({ error: message }, { status: 400 });
+    }
+
     const {
-        participationType, // 'solo' | 'team'
-        teamAction, // 'create' | 'join'
+        participationType,
+        teamAction,
         teamName,
         teamCode,
-        members, // TeamMemberInput[]
-        formData, // Record<string, any>
+        members: rawMembers,
+        formData,
     } = body;
+
+    if (participationType !== "solo" && participationType !== "team") {
+        return NextResponse.json({ error: "Invalid participation type" }, { status: 400 });
+    }
+
+    let members: TeamMemberInput[] = [];
+    if (rawMembers !== undefined) {
+        if (!Array.isArray(rawMembers) || !rawMembers.every(isTeamMemberInput)) {
+            return NextResponse.json(
+                { error: "Invalid team members payload" },
+                { status: 400 }
+            );
+        }
+        members = rawMembers;
+    }
 
     const {
         data: { user },
@@ -30,14 +69,16 @@ export async function POST(
         .from("events")
         .select("*")
         .eq("id", eventId)
-        .single();
+        .single<EventRow>();
 
     if (eventError || !event) {
         return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // 2. Check Capacity (Simple check, race condition possible but acceptable for now)
-    if (event.capacity && event.participants_count >= event.capacity) {
+    const capacity = event.capacity ?? null;
+    const currentParticipants = event.participants_count ?? 0;
+    if (capacity !== null && currentParticipants >= capacity) {
         return NextResponse.json({ error: "Event is full" }, { status: 400 });
     }
 
@@ -76,17 +117,36 @@ export async function POST(
     let teamId: string | null = null;
 
     if (participationType === "team") {
+        if (!teamAction) {
+            return NextResponse.json(
+                { error: "Team action is required for team registrations" },
+                { status: 400 }
+            );
+        }
+
         if (teamAction === "create") {
-            // Validate team size
-            if (members.length + 1 < (event.min_team_size || 1)) {
+            const sanitizedTeamName = teamName?.trim();
+            if (!sanitizedTeamName) {
                 return NextResponse.json(
-                    { error: `Minimum team size is ${event.min_team_size}` },
+                    { error: "Team name is required" },
                     { status: 400 }
                 );
             }
-            if (members.length + 1 > (event.max_team_size || 5)) {
+
+            // Validate team size
+            const minSize = event.min_team_size ?? 1;
+            const maxSize = event.max_team_size ?? 5;
+            const totalMembers = members.length + 1; // include leader
+
+            if (totalMembers < minSize) {
                 return NextResponse.json(
-                    { error: `Maximum team size is ${event.max_team_size}` },
+                    { error: `Minimum team size is ${minSize}` },
+                    { status: 400 }
+                );
+            }
+            if (totalMembers > maxSize) {
+                return NextResponse.json(
+                    { error: `Maximum team size is ${maxSize}` },
                     { status: 400 }
                 );
             }
@@ -97,7 +157,7 @@ export async function POST(
                 .from("teams")
                 .insert({
                     event_id: eventId,
-                    name: teamName,
+                    name: sanitizedTeamName,
                     code,
                     leader_id: user.id,
                 })
@@ -113,9 +173,9 @@ export async function POST(
             teamId = team.id;
 
             // Add Members
-            if (members && members.length > 0) {
+            if (members.length > 0) {
                 // Validate all members have userId (enforce registered users)
-                const invalidMembers = members.filter((m: any) => !m.userId);
+                const invalidMembers = members.filter((member) => !member.userId);
                 if (invalidMembers.length > 0) {
                     return NextResponse.json(
                         { error: "All team members must be registered users." },
@@ -124,12 +184,13 @@ export async function POST(
                 }
 
                 // Check if any member is already registered
-                const memberIds = members.map((m: any) => m.userId);
+                const memberIds = members.map((member) => member.userId as string);
                 const { data: existingRegs } = await supabase
                     .from("event_registrations")
                     .select("user_id")
                     .eq("event_id", eventId)
-                    .in("user_id", memberIds);
+                    .in("user_id", memberIds)
+                    .returns<{ user_id: string }[]>();
 
                 if (existingRegs && existingRegs.length > 0) {
                     return NextResponse.json(
@@ -138,12 +199,12 @@ export async function POST(
                     );
                 }
 
-                const membersToInsert = members.map((m: any) => ({
+                const membersToInsert = members.map((member) => ({
                     team_id: teamId,
-                    user_id: m.userId, // Link to user account
-                    name: m.name,
-                    email: m.email,
-                    role: m.role,
+                    user_id: member.userId as string, // Link to user account
+                    name: member.name,
+                    email: member.email,
+                    role: member.role,
                     status: "pending", // Or 'accepted' if we assume adding them implies consent/notification
                 }));
 
@@ -161,10 +222,16 @@ export async function POST(
                 }
             }
         } else if (teamAction === "join") {
+            if (!teamCode?.trim()) {
+                return NextResponse.json(
+                    { error: "Team code is required to join a team" },
+                    { status: 400 }
+                );
+            }
             const { data: team } = await supabase
                 .from("teams")
                 .select("id")
-                .eq("code", teamCode)
+                .eq("code", teamCode.trim())
                 .eq("event_id", eventId)
                 .single();
 

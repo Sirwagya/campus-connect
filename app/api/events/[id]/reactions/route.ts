@@ -1,5 +1,11 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import type { Database } from "@/types/database";
+
+type ReactionRow = Database["public"]["Tables"]["event_reactions"]["Row"];
+type ReactionInsert = Database["public"]["Tables"]["event_reactions"]["Insert"];
+
+const REACTIONS = new Set(["👍", "❤️", "🎉", "🔥", "👏"] as const);
 
 export async function POST(
     request: Request,
@@ -16,8 +22,11 @@ export async function POST(
     }
 
     try {
-        const body = await request.json();
-        const { reaction } = body;
+        const body = (await request.json()) as { reaction?: string };
+        if (!body.reaction || !REACTIONS.has(body.reaction as never)) {
+          return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
+        }
+        const reaction = body.reaction as ReactionInsert["reaction"];
 
         // Check if reaction exists
         const { data: existing } = await supabase
@@ -26,7 +35,7 @@ export async function POST(
             .eq("event_id", id)
             .eq("user_id", user.id)
             .eq("reaction", reaction)
-            .single();
+            .single<Pick<ReactionRow, "id">>();
 
         if (existing) {
             // Remove reaction
@@ -41,7 +50,8 @@ export async function POST(
             });
             return NextResponse.json({ added: true });
         }
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

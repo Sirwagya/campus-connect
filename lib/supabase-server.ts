@@ -1,13 +1,31 @@
 // lib/supabase-server.ts
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { createServerClient } from "@supabase/ssr";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+
+import type { Database } from "@/types/database";
+
+type TypedClient = SupabaseClient<Database>;
+
+type CookieOptions = {
+  domain?: string;
+  path?: string;
+  expires?: Date;
+  maxAge?: number;
+  sameSite?: "lax" | "strict" | "none";
+  httpOnly?: boolean;
+  secure?: boolean;
+};
+
+type CookieMirror = {
+  setCookie?: (name: string, value: string, options?: CookieOptions) => void;
+};
 
 /**
  * Admin (service-role) client for server-side tasks (writing tokens to DB).
  * Requires SUPABASE_SERVICE_ROLE_KEY env var.
  */
-export const supabaseAdmin = createClient(
+export const supabaseAdmin: TypedClient = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!, // MUST be service role key
   {
@@ -25,48 +43,33 @@ export const supabaseAdmin = createClient(
  *
  * NOTE: call this inside server route handlers where `cookies()` is available.
  */
-export async function createServerSupabase(responseForCookies?: {
-  // optionally provide an object that has .cookies.set so we can mirror cookies to the outgoing Response
-  setCookie?: (name: string, value: string, options?: any) => void;
-}) {
+export async function createServerSupabase(
+  responseForCookies?: CookieMirror
+): Promise<TypedClient> {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        // read cookie
-        get(name: string) {
+        // getAll for reading all cookies
+        getAll() {
+          return cookieStore.getAll();
+        },
+        // setAll for setting multiple cookies
+        setAll(cookiesToSet) {
           try {
-            return cookieStore.get(name)?.value;
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set({ name, value, ...options });
+              if (responseForCookies?.setCookie) {
+                responseForCookies.setCookie(name, value, options as CookieOptions);
+              }
+            });
           } catch {
-            return undefined;
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing user sessions.
           }
-        },
-
-        // set cookie: write to cookieStore (server) and mirror to response if provided
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {}
-          try {
-            if (responseForCookies?.setCookie) {
-              responseForCookies.setCookie(name, value, options);
-            }
-          } catch {}
-        },
-
-        // remove cookie => write empty value with same options
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: '', ...options });
-          } catch {}
-          try {
-            if (responseForCookies?.setCookie) {
-              responseForCookies.setCookie(name, '', options);
-            }
-          } catch {}
         },
       },
     }
@@ -79,10 +82,10 @@ export async function createServerSupabase(responseForCookies?: {
  * - It reads cookies from the incoming request header string.
  * - It DOES NOT attempt to set cookies (middleware cannot reliably set cookies here).
  */
-export function createProxySupabase(req: Request) {
+export function createProxySupabase(req: Request): TypedClient {
   const cookieHeader = req.headers.get('cookie') ?? '';
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {

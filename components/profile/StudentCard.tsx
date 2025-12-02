@@ -22,12 +22,12 @@ export function StudentCard({ student }: StudentCardProps) {
     <Link href={`/profile/${student.id}`}>
       <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
         <CardHeader className="flex flex-row items-center gap-4 pb-2">
-          <Avatar
-            className="h-12 w-12"
-            src={student.avatar_url}
-            alt={student.full_name}
-            fallback={student.full_name?.charAt(0) || "U"}
-          />
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={student.avatar_url} alt={student.full_name} />
+            <AvatarFallback>
+              {student.full_name?.charAt(0) || "U"}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex flex-col">
             <h3 className="font-semibold text-lg leading-none">
               {student.full_name}

@@ -1,9 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { supabaseAdmin } from "@/lib/supabase-server";
 import { notFound, redirect } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { User, Briefcase, GraduationCap } from "lucide-react";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { LevelProgressBar } from "@/components/profile/LevelProgressBar";
 import { IntegrationsPanel } from "@/components/profile/IntegrationsPanel";
@@ -11,6 +8,11 @@ import { SkillsAndTags } from "@/components/profile/SkillsAndTags";
 import { ProfileProjects } from "@/components/profile/ProfileProjects";
 import { ProfileAbout } from "@/components/profile/ProfileAbout";
 import { calculateLevel, LEVELS } from "@/lib/profile/leveling";
+import { getUnifiedProfile } from "@/lib/profile/service";
+
+// Force dynamic rendering to ensure fresh data on each request
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ProfilePage({
   params,
@@ -24,117 +26,25 @@ export default async function ProfilePage({
   const isPreview = preview === "true";
   const supabase = await createClient();
 
-  // Helper to check if string is UUID
-  const isUUID = (str: string) =>
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  // 1. Fetch Unified Profile (Single Source of Truth)
+  // This uses supabaseAdmin internally to guarantee identical data for all viewers
+  const profile = await getUnifiedProfile(id);
 
-  let profile = null;
-  let error = null;
-
-  // 1. Fetch Profile Data
-  if (isUUID(id)) {
-    const result = await supabase
-      .from("profiles")
-      .select(
-        `
-        *,
-        user:users(full_name, email, avatar_url, role, username),
-        stats:coding_stats_unified(*),
-        integrations:profile_integrations(*),
-        skills:profile_skills(*),
-        projects:profile_projects(*),
-        experience:profile_experience(*),
-        education:profile_education(*)
-      `
-      )
-      .eq("id", id)
-      .single();
-    profile = result.data;
-    error = result.error;
-  } else {
-    // Fetch by Username
-    const result = await supabase
-      .from("profiles")
-      .select(
-        `
-        *,
-        user:users(full_name, email, avatar_url, role, username),
-        stats:coding_stats_unified(*),
-        integrations:profile_integrations(*),
-        skills:profile_skills(*),
-        projects:profile_projects(*),
-        experience:profile_experience(*),
-        education:profile_education(*)
-      `
-      )
-      .eq("username", id)
-      .single();
-    profile = result.data;
-    error = result.error;
+  if (!profile) {
+    return notFound();
   }
 
+  // 2. Determine Ownership
   const {
     data: { user: currentUser },
   } = await supabase.auth.getUser();
 
-  // 2. Determine Ownership
-  const realIsOwner =
-    (profile && currentUser?.id === profile.id) ||
-    (!profile && isUUID(id) && currentUser?.id === id);
+  const isOwner = currentUser?.id === profile.id && !isPreview;
 
-  const isOwner = realIsOwner && !isPreview;
-
-  // 3. Handle Missing Profile (Fallback)
-  if (error || !profile) {
-    if (realIsOwner && !isPreview) {
-      redirect("/profile/edit");
-    }
-
-    // Fallback for users without profile row using supabaseAdmin
-    let user = null;
-    let userError = null;
-
-    if (isUUID(id)) {
-      const res = await supabaseAdmin
-        .from("users")
-        .select("id, full_name, email, avatar_url")
-        .eq("id", id)
-        .single();
-      user = res.data;
-      userError = res.error;
-    } else {
-      const res = await supabaseAdmin
-        .from("users")
-        .select("id, full_name, email, avatar_url")
-        .eq("username", id)
-        .single();
-      user = res.data;
-      userError = res.error;
-    }
-
-    if (userError || !user) {
-      return notFound();
-    }
-
-    // Construct Fallback Profile Object
-    profile = {
-      id: user.id,
-      user: user,
-      display_name: user.full_name || user.email?.split("@")[0],
-      username: user.email?.split("@")[0],
-      bio: null,
-      tagline: "Student at Campus Connect",
-      created_at: new Date().toISOString(),
-      stats: { total_xp: 0 },
-      skills: [],
-      projects: [],
-      experience: [],
-      education: [],
-      social_links: {},
-      integrations: [],
-      visibility: "public",
-    };
-  }
+  // 3. Redirect Owner to Edit if Profile is Empty/New (Optional UX improvement)
+  // If it's a fallback profile (no DB row) and user is owner, send to edit
+  // We can detect fallback by checking if created_at is very recent or missing fields,
+  // but for now let's just stick to the view.
 
   // 4. Calculate Level
   const levelData = calculateLevel(profile.stats?.total_xp || 0);
@@ -143,12 +53,12 @@ export default async function ProfilePage({
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header Section */}
       <ProfileHeader
-        profile={profile}
+        profile={profile as any}
         isOwner={isOwner}
         isPreview={isPreview}
       />
 
-      <div className="container mx-auto px-4 md:px-8 max-w-7xl">
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl mt-8">
         {/* Main Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column (Main Content) - Spans 8 cols */}
@@ -195,7 +105,7 @@ export default async function ProfilePage({
                 value="overview"
                 className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
               >
-                <IntegrationsPanel profile={profile} />
+                <IntegrationsPanel profile={profile} isOwner={isOwner} />
                 <div className="block lg:hidden">
                   {/* Mobile: Show Skills here too if sidebar is stacked */}
                   <SkillsAndTags
@@ -227,8 +137,6 @@ export default async function ProfilePage({
           <div className="lg:col-span-4 space-y-8 hidden lg:block">
             {/* Skills & Tags */}
             <SkillsAndTags skills={profile.skills || []} isOwner={isOwner} />
-
-            {/* Additional Sidebar Widgets can go here (e.g. Recent Activity, Friends) */}
           </div>
         </div>
       </div>

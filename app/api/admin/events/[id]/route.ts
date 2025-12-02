@@ -1,5 +1,25 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import type { Database } from "@/types/database";
+
+type EventUpdatePayload = Partial<
+    Pick<
+        Database["public"]["Tables"]["events"]["Update"],
+        | "title"
+        | "description"
+        | "start_ts"
+        | "end_ts"
+        | "location"
+        | "capacity"
+        | "image_path"
+        | "color_block"
+        | "tags"
+        | "category"
+        | "participation_type"
+        | "min_team_size"
+        | "max_team_size"
+    >
+>;
 
 export async function PATCH(
     request: Request,
@@ -27,7 +47,7 @@ export async function PATCH(
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as EventUpdatePayload;
         const {
             title,
             description,
@@ -68,8 +88,9 @@ export async function PATCH(
         if (error) throw error;
 
         return NextResponse.json({ event });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update event";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -104,7 +125,8 @@ export async function DELETE(
         if (error) throw error;
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to delete event";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

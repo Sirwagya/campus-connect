@@ -26,13 +26,10 @@ export async function getGmailTokens(userId: string): Promise<GmailTokens | null
     accessToken: user.google_access_token,
     refreshToken: user.google_refresh_token,
     expiry: (() => {
-      if (!user.token_expiry) return null;
-      // Handle legacy ISO strings
-      if (typeof user.token_expiry === 'string' && user.token_expiry.includes('T')) {
-        return new Date(user.token_expiry);
-      }
-      // Handle timestamps (number or string of digits)
-      return new Date(Number(user.token_expiry));
+      const expiry = user.token_expiry;
+      if (!expiry) return null;
+      // token_expiry is a number (timestamp in milliseconds)
+      return new Date(expiry);
     })(),
   };
 }
@@ -82,7 +79,12 @@ export async function saveGmailTokens(
 ): Promise<void> {
   const tokenExpiry = new Date(Date.now() + 3600 * 1000); // 1 hour
 
-  const updates: any = {
+  const updates: {
+    google_access_token: string;
+    token_expiry: number;
+    updated_at: string;
+    google_refresh_token?: string;
+  } = {
     google_access_token: accessToken,
     token_expiry: tokenExpiry.getTime(), // Store as timestamp (bigint)
     updated_at: new Date().toISOString(),

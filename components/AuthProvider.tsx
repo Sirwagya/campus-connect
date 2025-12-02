@@ -71,27 +71,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function checkAdminStatus(userId: string) {
       console.log("[AuthProvider] Fetching admin status (background)...");
       try {
-        // Use RPC with a timeout
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Request timed out")), 5000)
-        );
+        // Direct query to users table (publicly readable)
+        const { data, error } = await supabase
+          .from("users")
+          .select("is_admin")
+          .eq("id", userId)
+          .single();
 
-        const { data: isAdminData, error: adminError } = (await Promise.race([
-          supabase.rpc("am_i_admin"),
-          timeoutPromise,
-        ])) as any;
-
-        if (adminError) {
-          console.error("[AuthProvider] Admin check error:", adminError);
+        if (error) {
+          console.error("[AuthProvider] Admin check error:", error);
         } else {
-          console.log("[AuthProvider] Admin status:", isAdminData);
-          if (isAdminData) {
+          console.log("[AuthProvider] Admin status:", data?.is_admin);
+          if (data?.is_admin) {
             setIsAdmin(true);
             setRole("admin");
           }
         }
       } catch (e) {
-        console.error("[AuthProvider] Admin check failed/timed out:", e);
+        console.error("[AuthProvider] Admin check failed:", e);
       }
     }
 
@@ -135,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     console.log("[AuthProvider] Signing out...");
     await supabase.auth.signOut();
-    window.location.href = "/login"; // Let proxy.ts guard all other pages
+    window.location.href = "/login"; // Let middleware.ts guard all other pages
   };
 
   return (

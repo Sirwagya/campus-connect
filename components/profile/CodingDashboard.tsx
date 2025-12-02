@@ -1,25 +1,48 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Activity, Code, Trophy, Zap, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import Link from "next/link";
 
-interface CodingDashboardProps {
-  stats: any;
-  integrations: any[];
+interface CodingIntegration {
+  platform: string;
+  username: string;
 }
 
-export function CodingDashboard({ stats, integrations }: CodingDashboardProps) {
+interface CodingStats {
+  github_contributions?: number | null;
+  leetcode_problems?: number | null;
+  codeforces_rating?: number | null;
+}
+
+interface CodingDashboardProps {
+  stats?: CodingStats | null;
+  integrations?: CodingIntegration[];
+}
+
+export function CodingDashboard({
+  stats,
+  integrations = [],
+}: CodingDashboardProps) {
+  // Generate static heatmap pattern (deterministic, based on index)
+  const heatmapOpacities = useMemo(
+    () =>
+      Array.from({ length: 364 }, (_, index) => {
+        // Create a semi-random but deterministic pattern
+        const value = (index * 13 + 7) % 17;
+        return value > 12 ? 0.9 : 0.1;
+      }),
+    []
+  );
   // Helper to find integration data
   const getIntegration = (platform: string) =>
-    integrations?.find(
-      (i) => i.platform.toLowerCase() === platform.toLowerCase()
+    integrations.find(
+      (integration) =>
+        integration.platform.toLowerCase() === platform.toLowerCase()
     );
 
   const leetcode = getIntegration("leetcode");
-  const codeforces = getIntegration("codeforces");
-  const github = getIntegration("github");
 
   return (
     <div className="space-y-6">
@@ -40,7 +63,7 @@ export function CodingDashboard({ stats, integrations }: CodingDashboardProps) {
               <div className="space-y-1">
                 <p className="text-xs text-gray-400">Contributions</p>
                 <p className="text-2xl font-bold text-white">
-                  {stats?.github_contributions || 0}
+                  {stats?.github_contributions ?? 0}
                 </p>
               </div>
             </div>
@@ -72,7 +95,7 @@ export function CodingDashboard({ stats, integrations }: CodingDashboardProps) {
               <div className="space-y-1">
                 <p className="text-xs text-gray-400">Problems Solved</p>
                 <p className="text-2xl font-bold text-white">
-                  {stats?.leetcode_problems || 0}
+                  {stats?.leetcode_problems ?? 0}
                 </p>
               </div>
             </div>
@@ -102,7 +125,7 @@ export function CodingDashboard({ stats, integrations }: CodingDashboardProps) {
               <div className="space-y-1">
                 <p className="text-xs text-gray-400">Max Rating</p>
                 <p className="text-2xl font-bold text-white">
-                  {stats?.codeforces_rating || 0}
+                  {stats?.codeforces_rating ?? 0}
                 </p>
               </div>
             </div>
@@ -111,7 +134,9 @@ export function CodingDashboard({ stats, integrations }: CodingDashboardProps) {
                 variant="outline"
                 className="border-blue-500/20 text-blue-400 text-[10px]"
               >
-                {stats?.codeforces_rating > 0 ? "Pupil" : "Unrated"}
+                {stats && (stats.codeforces_rating ?? 0) > 0
+                  ? "Pupil"
+                  : "Unrated"}
               </Badge>
             </div>
           </CardContent>
@@ -160,16 +185,13 @@ export function CodingDashboard({ stats, integrations }: CodingDashboardProps) {
           <div className="h-[200px] flex flex-col items-center justify-center bg-black/20 rounded-xl border border-white/5 relative overflow-hidden">
             {/* Fake Heatmap Grid */}
             <div className="grid grid-cols-[repeat(52,1fr)] gap-1 p-4 opacity-50 w-full h-full">
-              {[...Array(364)].map((_, i) => {
-                const opacity = Math.random() > 0.7 ? Math.random() : 0.1;
-                return (
-                  <div
-                    key={i}
-                    className="rounded-[2px] bg-primary transition-all duration-1000"
-                    style={{ opacity }}
-                  />
-                );
-              })}
+              {heatmapOpacities.map((opacity, i) => (
+                <div
+                  key={i}
+                  className="rounded-[2px] bg-primary transition-all duration-1000"
+                  style={{ opacity }}
+                />
+              ))}
             </div>
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-[#18181B] to-transparent">
               <p className="text-gray-400 text-sm font-medium bg-[#18181B]/80 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10">

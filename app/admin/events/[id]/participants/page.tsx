@@ -4,131 +4,176 @@ import { Button } from "@/components/ui/Button";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { Loader2, Download, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import type { Database } from "@/types/database";
+
+type RegistrationRow = Pick<
+  Database["public"]["Tables"]["event_registrations"]["Row"],
+  "id" | "user_id" | "registered_at" | "team_id" | "form_response_id"
+>;
+
+type ParticipantUser = Pick<
+  Database["public"]["Tables"]["users"]["Row"],
+  "id" | "email" | "full_name"
+>;
+
+type ParticipantTeam = Pick<
+  Database["public"]["Tables"]["teams"]["Row"],
+  "id" | "name" | "code"
+>;
+
+type ParticipantFormResponse = Pick<
+  Database["public"]["Tables"]["event_form_responses"]["Row"],
+  "id" | "response"
+>;
 
 interface Participant {
   id: string;
   user_id: string;
-  user: {
-    email: string;
-    full_name: string;
-  };
+  user: ParticipantUser;
   team_id: string | null;
-  team?: {
-    name: string;
-    code: string;
-  };
+  team?: ParticipantTeam;
   registered_at: string;
-  form_response?: any;
+  form_response?: ParticipantFormResponse["response"] | null;
 }
 
 export default function EventParticipantsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
   const router = useRouter();
-  const supabase = createBrowserSupabase();
+  const supabase = useMemo(() => createBrowserSupabase(), []);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "solo" | "team">("all");
   const [eventId, setEventId] = useState<string>("");
 
-  useEffect(() => {
-    const init = async () => {
-      const { id } = await params;
-      setEventId(id);
-      fetchParticipants(id);
-    };
-    init();
-  }, [params]);
+  const fetchParticipants = useCallback(
+    async (id: string) => {
+      try {
+        const { data: registrations, error: regError } = await supabase
+          .from("event_registrations")
+          .select("id, user_id, registered_at, team_id, form_response_id")
+          .eq("event_id", id);
 
-  const fetchParticipants = async (id: string) => {
-    try {
-      // 1. Fetch Registrations (Raw)
-      const { data: registrations, error: regError } = await supabase
-        .from("event_registrations")
-        .select("id, user_id, registered_at, team_id, form_response_id")
-        .eq("event_id", id);
+        if (regError) throw regError;
 
-      if (regError) throw regError;
+        const regData = (registrations || []) as RegistrationRow[];
 
-      if (!registrations || registrations.length === 0) {
-        setParticipants([]);
-        return;
+        if (regData.length === 0) {
+          setParticipants([]);
+          return;
+        }
+
+        const userIds = Array.from(
+          new Set(regData.map((registration) => registration.user_id).filter(Boolean))
+        );
+        const teamIds = Array.from(
+          new Set(
+            regData
+              .map((registration) => registration.team_id)
+              .filter((value): value is string => Boolean(value))
+          )
+        );
+        const formResponseIds = Array.from(
+          new Set(
+            regData
+              .map((registration) => registration.form_response_id)
+              .filter((value): value is string => Boolean(value))
+          )
+        );
+
+        let users: ParticipantUser[] = [];
+        if (userIds.length > 0) {
+          const { data, error } = await supabase
+            .from("users")
+            .select("id, email, full_name")
+            .in("id", userIds);
+          if (error) {
+            console.error("Error fetching users:", error);
+          } else {
+            users = (data ?? []) as ParticipantUser[];
+          }
+        }
+
+        let teams: ParticipantTeam[] = [];
+        if (teamIds.length > 0) {
+          const { data, error } = await supabase
+            .from("teams")
+            .select("id, name, code")
+            .in("id", teamIds);
+          if (error) {
+            console.error("Error fetching teams:", error);
+          } else {
+            teams = (data ?? []) as ParticipantTeam[];
+          }
+        }
+
+        let forms: ParticipantFormResponse[] = [];
+        if (formResponseIds.length > 0) {
+          const { data, error } = await supabase
+            .from("event_form_responses")
+            .select("id, response")
+            .in("id", formResponseIds);
+          if (error) {
+            console.error("Error fetching forms:", error);
+          } else {
+            forms = (data ?? []) as ParticipantFormResponse[];
+          }
+        }
+
+        const userMap = new Map(users.map((user) => [user.id, user]));
+        const teamMap = new Map(teams.map((team) => [team.id, team]));
+        const formMap = new Map(forms.map((form) => [form.id, form.response]));
+
+        const mergedData: Participant[] = regData
+          .filter((registration) => registration.user_id !== null)
+          .map((registration) => ({
+            id: registration.id,
+            user_id: registration.user_id as string,
+            team_id: registration.team_id,
+            registered_at: registration.registered_at || new Date().toISOString(),
+            user:
+              userMap.get(registration.user_id as string) ??
+              ({
+                id: registration.user_id as string,
+                email: "Unknown",
+                full_name: "Unknown User",
+              } as ParticipantUser),
+            team: registration.team_id ? teamMap.get(registration.team_id) : undefined,
+            form_response: registration.form_response_id
+              ? formMap.get(registration.form_response_id) ?? null
+              : null,
+          }));
+
+        setParticipants(mergedData);
+      } catch (error) {
+        console.error("Error fetching participants:", error);
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [supabase]
+  );
 
-      // 2. Collect IDs
-      const userIds = Array.from(
-        new Set(registrations.map((r: any) => r.user_id).filter(Boolean))
-      );
-      const teamIds = Array.from(
-        new Set(registrations.map((r: any) => r.team_id).filter(Boolean))
-      );
-      const formResponseIds = Array.from(
-        new Set(
-          registrations.map((r: any) => r.form_response_id).filter(Boolean)
-        )
-      );
+  useEffect(() => {
+    setEventId(params.id);
+    void fetchParticipants(params.id);
+  }, [params.id, fetchParticipants]);
 
-      // 3. Fetch Related Data in Parallel
-      const [usersRes, teamsRes, formsRes] = await Promise.all([
-        supabase.from("users").select("id, email, full_name").in("id", userIds),
-        teamIds.length > 0
-          ? supabase.from("teams").select("id, name, code").in("id", teamIds)
-          : Promise.resolve({ data: [] }),
-        formResponseIds.length > 0
-          ? supabase
-              .from("event_form_responses")
-              .select("id, response")
-              .in("id", formResponseIds)
-          : Promise.resolve({ data: [] }),
-      ]);
-
-      if (usersRes.error)
-        console.error("Error fetching users:", usersRes.error);
-      if (teamsRes.error)
-        console.error("Error fetching teams:", teamsRes.error);
-      if (formsRes.error)
-        console.error("Error fetching forms:", formsRes.error);
-
-      // 4. Create Maps
-      const userMap = new Map(usersRes.data?.map((u: any) => [u.id, u]) || []);
-      const teamMap = new Map(teamsRes.data?.map((t: any) => [t.id, t]) || []);
-      const formMap = new Map(formsRes.data?.map((f: any) => [f.id, f]) || []);
-
-      // 5. Merge Data
-      const mergedData = registrations.map((r: any) => ({
-        ...r,
-        user: userMap.get(r.user_id) || {
-          email: "Unknown",
-          full_name: "Unknown User",
-        },
-        team: r.team_id ? teamMap.get(r.team_id) : undefined,
-        form_response: r.form_response_id
-          ? [formMap.get(r.form_response_id)]
-          : [], // Keep array structure for compatibility
-      }));
-
-      setParticipants(mergedData as any);
-    } catch (error) {
-      console.error("Error fetching participants:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredParticipants = participants.filter((p) => {
+  const filteredParticipants = participants.filter((participant) => {
+    const normalizedSearch = search.toLowerCase();
     const matchesSearch =
-      p.user.email.toLowerCase().includes(search.toLowerCase()) ||
-      p.user.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.team?.name.toLowerCase().includes(search.toLowerCase());
+      participant.user.email.toLowerCase().includes(normalizedSearch) ||
+      (participant.user.full_name?.toLowerCase().includes(normalizedSearch) ?? false) ||
+      (participant.team?.name?.toLowerCase().includes(normalizedSearch) ?? false);
 
     const matchesFilter =
       filter === "all" ||
-      (filter === "team" && p.team_id) ||
-      (filter === "solo" && !p.team_id);
+      (filter === "team" && participant.team_id) ||
+      (filter === "solo" && !participant.team_id);
 
     return matchesSearch && matchesFilter;
   });
@@ -144,16 +189,14 @@ export default function EventParticipantsPage({
         "Registered At",
         "Form Data",
       ],
-      ...filteredParticipants.map((p) => [
-        p.user.full_name || "N/A",
-        p.user.email,
-        p.team_id ? "Team" : "Solo",
-        p.team?.name || "",
-        p.team?.code || "",
-        new Date(p.registered_at).toLocaleString(),
-        p.form_response
-          ? JSON.stringify(p.form_response[0]?.response || {})
-          : "",
+      ...filteredParticipants.map((participant) => [
+        participant.user.full_name || "N/A",
+        participant.user.email,
+        participant.team_id ? "Team" : "Solo",
+        participant.team?.name || "",
+        participant.team?.code || "",
+        new Date(participant.registered_at).toLocaleString(),
+        participant.form_response ? JSON.stringify(participant.form_response) : "",
       ]),
     ]
       .map((e) => e.join(","))
@@ -204,7 +247,7 @@ export default function EventParticipantsPage({
         <select
           className="px-3 py-2 bg-background border rounded-md"
           value={filter}
-          onChange={(e) => setFilter(e.target.value as any)}
+          onChange={(event) => setFilter(event.target.value as typeof filter)}
         >
           <option value="all">All Participants</option>
           <option value="solo">Solo Only</option>

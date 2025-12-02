@@ -4,7 +4,7 @@ ADD COLUMN IF NOT EXISTS batch text,
 ADD COLUMN IF NOT EXISTS department text,
 ADD COLUMN IF NOT EXISTS resume_url text;
 
--- Add new fields to coding_integrations table
+-- Add new fields to profile_integrations table
 ALTER TABLE profile_integrations
 ADD COLUMN IF NOT EXISTS codechef_username text,
 ADD COLUMN IF NOT EXISTS hackerrank_username text;

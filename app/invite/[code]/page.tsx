@@ -5,10 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Loader2, Hash, Users } from "lucide-react";
 
+interface SpaceInvite {
+  space: {
+    name: string;
+    description?: string;
+    member_count: number;
+    is_private: boolean;
+  };
+}
+
 export default function InvitePage() {
   const { code } = useParams();
   const router = useRouter();
-  const [invite, setInvite] = useState<any>(null);
+  const [invite, setInvite] = useState<SpaceInvite | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState("");
@@ -20,8 +29,8 @@ export default function InvitePage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to load invite");
         setInvite(data.invite);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load invite");
       } finally {
         setLoading(false);
       }
@@ -38,8 +47,8 @@ export default function InvitePage() {
 
       // Redirect to space
       router.push(`/spaces/${data.spaceSlug}`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to join");
       setJoining(false);
     }
   };
@@ -65,6 +74,10 @@ export default function InvitePage() {
     );
   }
 
+  if (!invite) {
+    return null;
+  }
+
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-6 p-4 text-center bg-background">
       <div className="rounded-full bg-primary/10 p-6">
@@ -73,7 +86,7 @@ export default function InvitePage() {
 
       <div className="space-y-2">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          You've been invited to join
+          You&apos;ve been invited to join
         </p>
         <h1 className="text-4xl font-bold tracking-tight">
           {invite.space.name}

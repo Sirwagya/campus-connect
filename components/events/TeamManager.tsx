@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
-import { Plus, Trash2, Users, Search, Loader2, Check } from "lucide-react";
+import { Plus, Trash2, Users, Search, Loader2 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { useDebounce } from "@/hooks/use-debounce"; // Assuming this hook exists or I'll implement a simple one
+import { useDebounce } from "@/hooks/use-debounce";
+import type { TeamMemberInput } from "@/types/events";
 
-export interface TeamMemberInput {
-  userId?: string; // Added userId
-  name: string;
+interface UserSearchResult {
+  id: string;
   email: string;
-  role: string;
-  avatar_url?: string;
+  full_name?: string | null;
+  name?: string | null;
+  avatar_url?: string | null;
+}
+
+interface UserSearchResponse {
+  users?: UserSearchResult[];
 }
 
 interface TeamManagerProps {
@@ -29,35 +34,22 @@ export function TeamManager({
   const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState<TeamMemberInput[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const debouncedQuery = useDebounce(searchQuery, 300);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery.length >= 2) {
-        searchUsers(searchQuery);
-      } else {
-        setSearchResults([]);
-        setShowResults(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const searchUsers = async (query: string) => {
+  const searchUsers = useCallback(async (query: string) => {
     setIsSearching(true);
     try {
       const res = await fetch(
         `/api/users/search?q=${encodeURIComponent(query)}`
       );
-      const data = await res.json();
+      const data = (await res.json()) as UserSearchResponse;
       if (data.users) {
         // Filter out already added members
         const filtered = data.users.filter(
-          (u: any) => !members.some((m) => m.email === u.email)
+          (user) => !members.some((member) => member.email === user.email)
         );
         setSearchResults(filtered);
         setShowResults(true);
@@ -67,9 +59,19 @@ export function TeamManager({
     } finally {
       setIsSearching(false);
     }
-  };
+  }, [members]);
 
-  const addMember = (user: any) => {
+  // Debounce search
+  useEffect(() => {
+    if (debouncedQuery.length >= 2) {
+      void searchUsers(debouncedQuery);
+    } else {
+      setSearchResults([]);
+      setShowResults(false);
+    }
+  }, [debouncedQuery, searchUsers]);
+
+  const addMember = (user: UserSearchResult) => {
     if (members.length + 1 >= maxSize) {
       alert(`Maximum team size is ${maxSize}`);
       return;
@@ -81,11 +83,11 @@ export function TeamManager({
       return;
     }
 
-    const newMembers = [
+    const newMembers: TeamMemberInput[] = [
       ...members,
       {
         userId: user.id,
-        name: user.full_name || user.name,
+        name: user.full_name || user.name || user.email.split('@')[0],
         email: user.email,
         role: "Member",
         avatar_url: user.avatar_url,
@@ -136,6 +138,9 @@ export function TeamManager({
               (You are automatically the Team Leader)
             </span>
           </label>
+          <span className="text-xs text-muted-foreground">
+            Min {minSize} • Max {maxSize}
+          </span>
         </div>
 
         {/* Search Input */}
@@ -166,11 +171,11 @@ export function TeamManager({
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage
-                        src={user.avatar_url}
-                        alt={user.full_name || "User"}
+                        src={user.avatar_url ?? undefined}
+                        alt={user.full_name || user.name || "User"}
                       />
                       <AvatarFallback>
-                        {user.full_name?.[0] || "?"}
+                        {user.full_name?.[0] || user.name?.[0] || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -222,7 +227,7 @@ export function TeamManager({
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage
-                  src={member.avatar_url}
+                  src={member.avatar_url ?? undefined}
                   alt={member.name || "User"}
                 />
                 <AvatarFallback>{member.name?.[0] || "?"}</AvatarFallback>

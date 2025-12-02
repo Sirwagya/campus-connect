@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import type { Database } from '@/types/database';
+
+type SpaceRow = Database['public']['Tables']['spaces']['Row'];
+type SpaceMemberRow = Database['public']['Tables']['space_members']['Row'];
+type SpaceUpdatePayload = Pick<
+  SpaceRow,
+  'name' | 'description' | 'is_private' | 'tags' | 'icon_url' | 'banner_url'
+>;
+
+const SERVER_ERROR = 'Internal server error';
+
+const buildErrorResponse = (error: unknown, status = 500) => {
+  const message = error instanceof Error ? error.message : SERVER_ERROR;
+  return NextResponse.json({ error: message }, { status });
+};
 
 export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ slug: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
 ) {
     try {
         const supabase = await createServerSupabase();
@@ -22,7 +37,7 @@ export async function GET(
         }
 
         // Check membership if user is logged in
-        let membership = null;
+        let membership: SpaceMemberRow | null = null;
         if (session) {
             const { data: member } = await supabase
                 .from('space_members')
@@ -35,8 +50,8 @@ export async function GET(
         }
 
         return NextResponse.json({ space, membership });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }
 
@@ -53,9 +68,9 @@ export async function PATCH(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const updates = await request.json();
+        const updates = (await request.json()) as Partial<SpaceUpdatePayload>;
 
-        // Check if user is admin or owner
+        // Check if user is admin, owner, or moderator
         const { data: space } = await supabase
             .from('spaces')
             .select('id, owner_id')
@@ -72,16 +87,42 @@ export async function PATCH(
             .eq('id', session.user.id)
             .single();
 
+        // Check if user is a moderator of this space
+        const { data: membership } = await supabase
+            .from('space_members')
+            .select('role')
+            .eq('space_id', space.id)
+            .eq('user_id', session.user.id)
+            .single();
+
         const isOwner = space.owner_id === session.user.id;
         const isAdmin = user?.is_admin;
+        const isModerator = membership?.role === 'moderator';
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin && !isModerator) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Whitelist allowed fields for update
+        const allowedFields: Array<keyof SpaceUpdatePayload> = [
+            'name',
+            'description',
+            'is_private',
+            'tags',
+            'icon_url',
+            'banner_url',
+        ];
+        const sanitizedUpdates: Record<string, unknown> = {};
+
+        for (const field of allowedFields) {
+            if (updates[field] !== undefined) {
+                sanitizedUpdates[field] = updates[field];
+            }
         }
 
         const { data: updatedSpace, error } = await supabase
             .from('spaces')
-            .update(updates)
+            .update(sanitizedUpdates)
             .eq('id', space.id)
             .select()
             .single();
@@ -89,8 +130,8 @@ export async function PATCH(
         if (error) throw error;
 
         return NextResponse.json({ space: updatedSpace });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }
 
@@ -139,7 +180,7 @@ export async function DELETE(
         if (error) throw error;
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }

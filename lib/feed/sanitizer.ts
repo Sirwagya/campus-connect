@@ -1,17 +1,28 @@
+import 'server-only';
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 
-let sanitizer: any = null;
+// Lazy-initialized sanitizer for server-side use
+let sanitizer: ReturnType<typeof DOMPurify> | null = null;
 
-const getSanitizer = () => {
+const getSanitizer = (): ReturnType<typeof DOMPurify> => {
   if (!sanitizer) {
-    const window = new JSDOM('').window;
-    sanitizer = DOMPurify(window as any);
+    const dom = new JSDOM('');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sanitizer = DOMPurify(dom.window as any);
   }
   return sanitizer;
 };
 
+/**
+ * Sanitize post content for safe rendering
+ * This is a server-only function
+ */
 export const sanitizePostContent = (content: string): string => {
+  if (!content || typeof content !== 'string') {
+    return '';
+  }
+
   try {
     const clean = getSanitizer().sanitize(content, {
       ALLOWED_TAGS: [
@@ -25,7 +36,7 @@ export const sanitizePostContent = (content: string): string => {
     });
     return clean;
   } catch (error) {
-    console.error('Sanitization failed, falling back to escape:', error);
+    console.error('[Sanitizer] Error sanitizing content:', error);
     // Fallback: escape HTML entities to be safe
     return content
       .replace(/&/g, "&amp;")

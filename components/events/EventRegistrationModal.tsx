@@ -4,16 +4,28 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { DynamicForm } from "./DynamicForm";
+import type { FormState } from "./DynamicForm";
 import { TeamManager } from "./TeamManager";
 import { FormField } from "./FormBuilder";
 import { Loader2, Users, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type {
+  EventParticipationType,
+  EventRegistrationPayload,
+  TeamMemberInput,
+} from "@/types/events";
+
+interface TeamState {
+  name: string;
+  code: string;
+  members: TeamMemberInput[];
+}
 
 interface EventRegistrationModalProps {
   eventId: string;
   isRegistered: boolean;
   isFull: boolean;
-  participationType: "solo" | "team" | "both";
+  participationType: EventParticipationType;
   minTeamSize: number;
   maxTeamSize: number;
 }
@@ -28,13 +40,11 @@ export function EventRegistrationModal({
 }: EventRegistrationModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<"type" | "team" | "form">("type");
-  const [selectedType, setSelectedType] = useState<"solo" | "team">("solo");
+  const [selectedType, setSelectedType] = useState<
+    Exclude<EventParticipationType, "both">
+  >("solo");
   const [teamAction, setTeamAction] = useState<"create" | "join">("create");
-  const [teamData, setTeamData] = useState<{
-    name: string;
-    code: string;
-    members: any[];
-  }>({
+  const [teamData, setTeamData] = useState<TeamState>({
     name: "",
     code: "",
     members: [],
@@ -66,34 +76,42 @@ export function EventRegistrationModal({
     }
   }, [isOpen, eventId, participationType]);
 
-  const handleTeamChange = (name: string, members: any[]) => {
+  const handleTeamChange = (name: string, members: TeamMemberInput[]) => {
     setTeamData((prev) => ({ ...prev, name, members }));
   };
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: FormState) => {
     setSubmitting(true);
     try {
+      const payload: EventRegistrationPayload = {
+        participationType: selectedType,
+        teamAction: selectedType === "team" ? teamAction : undefined,
+        teamName: teamData.name || undefined,
+        teamCode: teamData.code || undefined,
+        members:
+          selectedType === "team" && teamAction === "create"
+            ? teamData.members
+            : undefined,
+        formData,
+      };
+
       const res = await fetch(`/api/events/${eventId}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          participationType: selectedType,
-          teamAction: selectedType === "team" ? teamAction : undefined,
-          teamName: teamData.name,
-          teamCode: teamData.code,
-          members: teamData.members,
-          formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data?.error || "Registration failed");
+      }
 
       setIsOpen(false);
       router.refresh();
       alert("Registration successful!");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Registration failed";
+      alert(message);
     } finally {
       setSubmitting(false);
     }
@@ -109,8 +127,9 @@ export function EventRegistrationModal({
       if (!res.ok) throw new Error("Failed to unregister");
       router.refresh();
       alert("Unregistered successfully");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to unregister";
+      alert(message);
     } finally {
       setSubmitting(false);
     }

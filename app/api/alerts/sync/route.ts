@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, supabaseAdmin } from '@/lib/supabase-server';
 import { listMessages, getMessage, parseHeaders, extractBody } from '@/lib/gmail';
+import type { Database } from '@/types/database';
 
-export async function POST(request: NextRequest) {
+type UserSyncFields = Pick<Database['public']['Tables']['users']['Row'], 'last_sync'>;
+type AlertIdentifiers = Pick<Database['public']['Tables']['alerts']['Row'], 'id' | 'gmail_id'>;
+type GmailMessageList = Awaited<ReturnType<typeof listMessages>>;
+
+export async function POST(_request: NextRequest) {
   console.log('=== GMAIL SYNC STARTED ===');
+  void _request;
 
   try {
     // Get authenticated user
@@ -21,12 +27,13 @@ export async function POST(request: NextRequest) {
     console.log('[Sync] User ID:', userId);
 
     // Get user's last sync time
-    const { data: userRecord } = await supabaseAdmin
+    const { data: userRecordData } = await supabaseAdmin
       .from('users')
       .select('last_sync')
       .eq('id', userId)
       .single();
 
+    const userRecord = userRecordData as UserSyncFields | null;
     const lastSync = userRecord?.last_sync;
     let query = '';
 
@@ -42,17 +49,20 @@ export async function POST(request: NextRequest) {
     // Fetch recent emails from Gmail
     console.log('[Sync] Fetching messages from Gmail...');
 
-    let messages;
+    let messages: GmailMessageList = [];
     try {
-      // If incremental, fetch up to 50 new emails. If full, fetch 20.
       messages = await listMessages(userId, 50, query);
       console.log(`[Sync] ✅ Found ${messages.length} messages`);
-    } catch (error: any) {
-      console.error('[Sync] ❌ Failed to fetch from Gmail:', error.message);
-      return NextResponse.json({
-        error: 'Gmail API Error: ' + error.message,
-        details: error.toString()
-      }, { status: 500 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown Gmail API error';
+      console.error('[Sync] ❌ Failed to fetch from Gmail:', error);
+      return NextResponse.json(
+        {
+          error: `Gmail API Error: ${message}`,
+          details: error instanceof Error ? error.stack ?? message : String(error),
+        },
+        { status: 500 }
+      );
     }
 
     let newCount = 0;
@@ -79,7 +89,8 @@ export async function POST(request: NextRequest) {
           .from('alerts')
           .select('id')
           .eq('gmail_id', message.id)
-          .single();
+          .returns<Pick<AlertIdentifiers, 'id'>>()
+          .maybeSingle();
 
         if (existing) {
           // Update existing
@@ -140,10 +151,11 @@ export async function POST(request: NextRequest) {
       totalProcessed: messages.length,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Sync failed';
     console.error('[Sync] ERROR:', error);
     return NextResponse.json(
-      { error: error.message || 'Sync failed' },
+      { error: message },
       { status: 500 }
     );
   }

@@ -5,9 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Calendar, MapPin, Users, Play, Clock } from "lucide-react";
 import { Event } from "@/types/events";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/Button";
 
 interface EventCardProps {
   event: Event;

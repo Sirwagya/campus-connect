@@ -12,7 +12,23 @@ import { cn } from "@/lib/utils";
 
 interface EventCommentsProps {
   eventId: string;
-  currentUser: any;
+  currentUser?: {
+    id: string;
+    user_metadata?: {
+      avatar_url?: string | null;
+      full_name?: string | null;
+    };
+  } | null;
+}
+
+interface CommentsResponse {
+  comments?: EventComment[];
+  error?: string;
+}
+
+interface CommentResponse {
+  comment: EventComment;
+  error?: string;
 }
 
 export function EventComments({ eventId, currentUser }: EventCommentsProps) {
@@ -23,24 +39,36 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchComments = async () => {
+      setIsLoading(true);
       try {
         const res = await fetch(`/api/events/${eventId}/comments`);
-        const data = await res.json();
-        if (data.comments) {
+        const data = (await res.json()) as CommentsResponse;
+        if (!isMounted) return;
+        if (res.ok && data.comments) {
           setComments(data.comments);
+        } else if (!res.ok) {
+          console.error("Failed to fetch comments:", data.error);
         }
       } catch (error) {
-        console.error("Error fetching comments:", error);
+        if (isMounted) {
+          console.error("Error fetching comments:", error);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
+
     fetchComments();
+    return () => {
+      isMounted = false;
+    };
   }, [eventId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!newComment.trim() || isSending) return;
 
     setIsSending(true);
@@ -50,8 +78,12 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: newComment }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = (await res.json()) as CommentResponse;
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to post comment");
+      }
+
+      if (data.comment) {
         setComments((prev) => [...prev, data.comment]);
         setNewComment("");
       }
@@ -76,7 +108,7 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
       <div className="flex gap-4">
         <Avatar className="h-10 w-10 border border-[#27272a]">
           <AvatarImage
-            src={currentUser?.user_metadata?.avatar_url}
+            src={currentUser?.user_metadata?.avatar_url ?? undefined}
             alt={currentUser?.user_metadata?.full_name || "User"}
           />
           <AvatarFallback>
@@ -100,7 +132,7 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
             <Textarea
               placeholder="Add to the discussion..."
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={(event) => setNewComment(event.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               className="min-h-[100px] border-none focus-visible:ring-0 bg-transparent resize-y p-4"
@@ -146,7 +178,7 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
                 >
                   <Avatar className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all border border-[#27272a] bg-[#131313]">
                     <AvatarImage
-                      src={comment.user?.avatar_url}
+                      src={comment.user?.avatar_url ?? undefined}
                       alt={comment.user?.name || "User"}
                     />
                     <AvatarFallback>
@@ -166,9 +198,10 @@ export function EventComments({ eventId, currentUser }: EventCommentsProps) {
                         </Link>
                         <span className="text-xs text-muted-foreground">
                           commented{" "}
-                          {formatDistanceToNow(new Date(comment.created_at), {
-                            addSuffix: true,
-                          })}
+                          {formatDistanceToNow(
+                            new Date(comment.created_at),
+                            { addSuffix: true }
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">

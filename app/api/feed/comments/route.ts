@@ -1,6 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, supabaseAdmin } from '@/lib/supabase-server';
-import { sanitizePostContent } from '@/lib/feed/sanitizer';
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabase, supabaseAdmin } from "@/lib/supabase-server";
+import { sanitizePostContent } from "@/lib/feed/sanitizer";
+import type { FeedComment } from "@/types/feed";
+import type { Database } from "@/types/database";
+
+type CommentInsert = Database["public"]["Tables"]["comments"]["Insert"];
+type CommentResponse = {
+    comments?: FeedComment[];
+    comment?: FeedComment;
+    error?: string;
+};
+type CreateCommentPayload = {
+    postId: string;
+    content: string;
+};
 
 export async function GET(request: NextRequest) {
     try {
@@ -13,23 +26,23 @@ export async function GET(request: NextRequest) {
         }
 
         const { data: comments, error } = await supabase
-            .from('comments')
-            .select(`
-        *,
-        user:users(id, name, full_name, avatar_url, email)
-      `)
-            .eq('post_id', postId)
-            .order('created_at', { ascending: true });
+            .from("comments")
+            .select(
+                `*, user:users(id, name, full_name, avatar_url, email)`
+            )
+            .eq("post_id", postId)
+            .order("created_at", { ascending: true });
 
         if (error) {
             console.error('[Comments Fetch] Error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ comments });
-    } catch (error: any) {
+        return NextResponse.json<CommentResponse>({ comments: comments as FeedComment[] });
+    } catch (error: unknown) {
         console.error('[Comments Fetch] Unexpected error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -42,7 +55,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as Partial<CreateCommentPayload>;
         const { postId, content } = body;
 
         if (!postId || !content || !content.trim()) {
@@ -54,17 +67,16 @@ export async function POST(request: NextRequest) {
 
         // Use supabaseAdmin for insert to avoid cache issues
         const { data, error } = await supabaseAdmin
-            .from('comments')
-            .insert({
+            .from("comments")
+            .insert<CommentInsert>({
                 post_id: postId,
                 user_id: session.user.id,
                 content: sanitizedContent,
             })
-            .select(`
-        *,
-        user:users(id, name, full_name, avatar_url, email)
-      `)
-            .single();
+            .select(
+                `*, user:users(id, name, full_name, avatar_url, email)`
+            )
+            .single<FeedComment>();
 
         if (error) {
             console.error('[Comment Create] Error:', error);
@@ -75,9 +87,10 @@ export async function POST(request: NextRequest) {
         // We'll just let the client update the UI optimistically or refetch.
         // Ideally: await supabaseAdmin.rpc('increment_comments', { row_id: postId });
 
-        return NextResponse.json({ comment: data });
-    } catch (error: any) {
+        return NextResponse.json<CommentResponse>({ comment: data });
+    } catch (error: unknown) {
         console.error('[Comment Create] Unexpected error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

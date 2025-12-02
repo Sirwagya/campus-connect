@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import type { Alert } from "@/types/alerts";
 
 interface AlertItemProps {
-  alert: any;
+  alert: Alert;
   onToggleStar?: (id: number) => void;
-  onDelete?: (id: number) => void;
 }
 
-export function AlertItem({ alert, onToggleStar, onDelete }: AlertItemProps) {
+export function AlertItem({ alert, onToggleStar }: AlertItemProps) {
   return (
     <motion.div
       layout

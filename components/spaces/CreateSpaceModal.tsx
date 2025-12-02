@@ -7,6 +7,20 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { MessageSquare, Loader2, Hash, Lock, Globe } from "lucide-react";
+import type { Space } from "@/types/spaces";
+
+type CreateSpacePayload = {
+  name: string;
+  slug: string;
+  description?: string;
+  isPrivate: boolean;
+  tags: string[];
+};
+
+type CreateSpaceResponse = {
+  error?: string;
+  space: Space;
+};
 
 interface CreateSpaceModalProps {
   isOpen: boolean;
@@ -31,38 +45,48 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
     setSlug(generatedSlug);
   }, [name]);
 
+  const normalizedTags = (rawTags: string): string[] =>
+    rawTags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+  const buildPayload = (): CreateSpacePayload => {
+    const trimmedName = name.trim();
+    const trimmedSlug = slug.trim();
+    return {
+      name: trimmedName,
+      slug: trimmedSlug,
+      description: description.trim() || undefined,
+      isPrivate,
+      tags: normalizedTags(tags),
+    };
+  };
+
   const handleCreateSpace = async () => {
-    if (!name.trim() || !slug.trim()) return;
+    const payload = buildPayload();
+    if (!payload.name || !payload.slug) return;
 
     setIsLoading(true);
     try {
       const res = await fetch("/api/spaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          slug,
-          description,
-          isPrivate,
-          tags: tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean),
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as CreateSpaceResponse;
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to create space");
       }
 
-      // Redirect to the new space
       router.push(`/spaces/${data.space.slug}`);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating space:", error);
-      alert(error.message || "Failed to create space");
+      const message = error instanceof Error ? error.message : "Failed to create space";
+      alert(message);
     } finally {
       setIsLoading(false);
     }

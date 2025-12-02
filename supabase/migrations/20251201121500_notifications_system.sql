@@ -13,22 +13,25 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 -- Enable RLS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Policies
+-- Policies (idempotent)
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
 CREATE POLICY "Users can view their own notifications"
     ON public.notifications
     FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "System can insert notifications" ON public.notifications;
 CREATE POLICY "System can insert notifications"
     ON public.notifications
     FOR INSERT
-    WITH CHECK (true); -- Ideally restricted, but for now allow inserts (server-side service role bypasses RLS anyway)
+    WITH CHECK (true); -- Ideally restricted; service role bypasses RLS anyway
 
+DROP POLICY IF EXISTS "Users can update their own notifications (mark as read)" ON public.notifications;
 CREATE POLICY "Users can update their own notifications (mark as read)"
     ON public.notifications
     FOR UPDATE
     USING (auth.uid() = user_id);
 
--- Create index for performance
+-- Indexes
 CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS notifications_created_at_idx ON public.notifications(created_at DESC);

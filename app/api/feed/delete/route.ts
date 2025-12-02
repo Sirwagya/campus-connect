@@ -1,5 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, supabaseAdmin } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabase, supabaseAdmin } from "@/lib/supabase-server";
+import type { Database } from "@/types/database";
+
+type PostRow = Database["public"]["Tables"]["posts"]["Row"];
+
+type DeletePostResponse =
+    | { success: true }
+    | { error: string; status?: number };
 
 export async function DELETE(request: NextRequest) {
     try {
@@ -11,7 +18,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url);
-        const postId = searchParams.get('postId');
+        const postId = searchParams.get("postId");
 
         if (!postId) {
             return NextResponse.json({ error: 'Post ID required' }, { status: 400 });
@@ -24,10 +31,10 @@ export async function DELETE(request: NextRequest) {
         // Given the previous RLS/Cache issues, let's verify ownership manually then use Admin to delete.
 
         const { data: post } = await supabaseAdmin
-            .from('posts')
-            .select('user_id')
-            .eq('id', postId)
-            .single();
+            .from("posts")
+            .select("user_id")
+            .eq("id", postId)
+            .single<PostRow>();
 
         if (!post) {
             return NextResponse.json({ error: 'Post not found' }, { status: 404 });
@@ -39,18 +46,19 @@ export async function DELETE(request: NextRequest) {
 
         // Delete post using Admin to ensure it works
         const { error } = await supabaseAdmin
-            .from('posts')
+            .from("posts")
             .delete()
-            .eq('id', postId);
+            .eq("id", postId);
 
         if (error) {
             console.error('[Delete Post] Error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ success: true });
-    } catch (error: any) {
+        return NextResponse.json<DeletePostResponse>({ success: true });
+    } catch (error: unknown) {
         console.error('[Delete Post] Unexpected error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json<DeletePostResponse>({ error: message }, { status: 500 });
     }
 }

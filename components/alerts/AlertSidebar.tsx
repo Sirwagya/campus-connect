@@ -1,12 +1,21 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { Inbox, Star, Send, File, AlertCircle, Bell } from "lucide-react";
+import {
+  Inbox,
+  Star,
+  Send,
+  File,
+  AlertCircle,
+  Bell,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AlertFilter } from "@/types/alerts";
 
 interface AlertSidebarProps {
-  activeTab: string;
-  onTabChange: (tab: any) => void;
+  activeTab: AlertFilter;
+  onTabChange: (tab: AlertFilter) => void;
   unreadCount?: number;
   notificationCount?: number;
 }
@@ -17,7 +26,13 @@ export function AlertSidebar({
   unreadCount = 0,
   notificationCount = 0,
 }: AlertSidebarProps) {
-  const items = [
+  const items: Array<{
+    id: AlertFilter;
+    label: string;
+    icon: LucideIcon;
+    count?: number;
+    color?: string;
+  }> = [
     { id: "all", label: "Inbox", icon: Inbox, count: unreadCount },
     { id: "starred", label: "Starred", icon: Star },
     {

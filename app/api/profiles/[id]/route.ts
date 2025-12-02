@@ -68,16 +68,17 @@ export async function GET(
 
         if (!isPublic && !isOwner) {
             // Private Profile: Return limited data
+            const userObj = profile.user as { full_name: string | null; email: string; avatar_url: string | null; role: string | null } | null;
             return NextResponse.json({
                 profile: {
                     id: profile.id,
                     user: {
-                        full_name: profile.user?.full_name,
-                        avatar_url: profile.user?.avatar_url,
-                        username: profile.user?.username, // Assuming username is safe
+                        full_name: userObj?.full_name,
+                        avatar_url: userObj?.avatar_url,
+                        username: userObj?.email?.split('@')[0], // Derive from email
                     },
-                    display_name: profile.display_name || profile.user?.full_name,
-                    avatar_url: profile.avatar_url || profile.user?.avatar_url,
+                    display_name: profile.display_name || userObj?.full_name,
+                    avatar_url: profile.avatar_url || userObj?.avatar_url,
                     visibility: 'private',
                     is_owner: false,
                     // Don't include bio, skills, integrations, etc.
@@ -97,8 +98,9 @@ export async function GET(
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[Profile API] Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

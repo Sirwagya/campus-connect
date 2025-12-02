@@ -6,20 +6,16 @@ import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { Edit, Plus, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Event } from "@/types/events";
 
 export default function AdminEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const supabase = createBrowserSupabase();
+  const supabase = useMemo(() => createBrowserSupabase(), []);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("events")
@@ -33,7 +29,11 @@ export default function AdminEventsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    void fetchEvents();
+  }, [fetchEvents]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this event?")) return;

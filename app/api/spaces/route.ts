@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import type { Database } from '@/types/database';
+
+type SpaceInsert = Database['public']['Tables']['spaces']['Insert'];
+
+const buildErrorResponse = (error: unknown, status = 500) => {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
+};
 
 export async function GET(request: NextRequest) {
     try {
@@ -7,7 +15,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const query = searchParams.get('q');
         const tag = searchParams.get('tag');
-        const limit = parseInt(searchParams.get('limit') || '20');
+        const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
 
         let dbQuery = supabase
             .from('spaces')
@@ -26,12 +34,12 @@ export async function GET(request: NextRequest) {
         const { data: spaces, error } = await dbQuery;
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return buildErrorResponse(error);
         }
 
         return NextResponse.json({ spaces });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }
 
@@ -44,7 +52,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as Partial<SpaceInsert> & { isPrivate?: boolean };
         const { name, slug, description, isPrivate, tags } = body;
 
         console.log("Creating space:", { name, slug, owner_id: session.user.id });
@@ -98,7 +106,7 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json({ space });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }

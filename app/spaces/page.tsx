@@ -19,14 +19,23 @@ export default async function SpacesPage() {
     .select("*")
     .order("member_count", { ascending: false });
 
-  // Fetch admin status
+  // Fetch admin status and user's space memberships
   const { data: user } = await supabase
     .from("users")
     .select("is_admin")
     .eq("id", session.user.id)
     .single();
 
+  // Fetch user's memberships to determine role in each space
+  const { data: memberships } = await supabase
+    .from("space_members")
+    .select("space_id, role")
+    .eq("user_id", session.user.id);
+
   const isAdmin = user?.is_admin || false;
+  const membershipMap = new Map(
+    memberships?.map((m) => [m.space_id, m.role]) || []
+  );
 
   if (error) {
     console.error("Error fetching spaces:", JSON.stringify(error, null, 2));
@@ -37,7 +46,12 @@ export default async function SpacesPage() {
   return (
     <main className="min-h-screen bg-black text-white pb-20">
       <div className="container max-w-[1280px] mx-auto py-12 px-6 md:px-10">
-        <SpacesList initialSpaces={spaces || []} isAdmin={isAdmin} />
+        <SpacesList
+          initialSpaces={spaces || []}
+          isAdmin={isAdmin}
+          currentUserId={session.user.id}
+          membershipMap={Object.fromEntries(membershipMap)}
+        />
       </div>
     </main>
   );

@@ -1,4 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase-server";
+import { normalizeFeedPost } from "@/lib/feed/normalize";
+import type { FeedPost, FeedUser, PostWithRelations } from "@/types/feed";
 import ClientFeed from "./ClientFeed";
 import { redirect } from "next/navigation";
 
@@ -25,7 +27,7 @@ export default async function FeedPage() {
     .select(
       `
       *,
-      user:users(id, name, full_name, avatar_url, email),
+      user:users!posts_user_id_fkey(id, name, full_name, avatar_url, email),
       likes:post_likes(user_id), 
       comments:comments(count)
     `
@@ -33,21 +35,14 @@ export default async function FeedPage() {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (error) {
-    console.error("Error fetching initial feed:", error);
+  if (error && (error.message || error.code)) {
+    console.error("Error fetching initial feed:", error.message, error.code, error.details);
   }
 
   // Process posts for initial state (similar to API)
-  const enrichedPosts = (posts || []).map((post: any) => ({
-    ...post,
-    liked_by_user: post.likes.some(
-      (like: any) => like.user_id === session.user.id
-    ),
-    likes: undefined,
-    likes_count: post.likes_count || 0,
-    comments_count: post.comments?.[0]?.count || 0,
-    comments: undefined,
-  }));
+  const enrichedPosts: FeedPost[] = (posts || []).map((post) =>
+    normalizeFeedPost(post as PostWithRelations, session.user.id)
+  );
 
   const nextCursor =
     enrichedPosts.length === 10
@@ -55,17 +50,22 @@ export default async function FeedPage() {
       : null;
 
   // Combine auth session email with profile data if profile email is missing
-  const effectiveUser = {
-    ...userProfile,
-    email: userProfile?.email || session.user.email,
-    id: session.user.id, // Ensure ID is present
+  const effectiveUser: FeedUser = {
+    id: session.user.id,
+    email: userProfile?.email || session.user.email || "",
     name:
       userProfile?.name ||
       userProfile?.full_name ||
       session.user.user_metadata?.full_name ||
-      session.user.email?.split("@")[0],
+      session.user.email?.split("@")[0] ||
+      "User",
+    full_name:
+      userProfile?.full_name ||
+      userProfile?.name ||
+      session.user.user_metadata?.full_name,
     avatar_url:
       userProfile?.avatar_url || session.user.user_metadata?.avatar_url,
+    role: (userProfile as { role?: string | null } | null)?.role ?? null,
   };
 
   return (

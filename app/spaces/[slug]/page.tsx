@@ -18,6 +18,13 @@ export default async function SpaceChatPage({
     redirect("/login");
   }
 
+  // Fetch user profile
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("id, name, full_name, avatar_url")
+    .eq("id", session.user.id)
+    .single();
+
   // Fetch space details
   console.log("Fetching space with slug:", slug);
   const { data: space, error } = await supabase
@@ -51,12 +58,21 @@ export default async function SpaceChatPage({
     .eq("user_id", session.user.id)
     .single();
 
+  // Build currentUser object compatible with CurrentUser type
+  const currentUser = {
+    id: session.user.id,
+    name: userProfile?.name ?? null,
+    full_name: userProfile?.full_name ?? null,
+    avatar_url: userProfile?.avatar_url ?? null,
+    email: session.user.email,
+  };
+
   return (
     <main className="h-[calc(100vh-4rem)] flex flex-col bg-background">
       <SpaceChatClient
         space={space}
         initialMember={member}
-        currentUser={session.user}
+        currentUser={currentUser}
       />
     </main>
   );

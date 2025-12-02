@@ -61,7 +61,7 @@ export async function refreshGoogleToken(
  * Fetch emails from Gmail API
  * @param accessToken - Valid Google OAuth access token
  * @param maxResults - Maximum number of messages to return (default: 10)
- * @param query - Gmail query string (default: 'is:unread')
+ * @param query - Gmail query string (default: &apos;is:unread&apos;)
  * @returns List of Gmail messages with IDs and thread IDs
  */
 export async function fetchEmails(
@@ -102,7 +102,7 @@ export async function fetchEmails(
 export async function fetchEmailById(
     accessToken: string,
     messageId: string
-): Promise<any> {
+): Promise<GmailMessage> {
     const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}`
 
     const response = await fetch(url, {
@@ -118,7 +118,7 @@ export async function fetchEmailById(
         throw new Error(`Failed to fetch email: ${error}`)
     }
 
-    return response.json()
+    return response.json() as Promise<GmailMessage>;
 }
 
 /**

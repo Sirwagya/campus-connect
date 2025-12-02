@@ -2,30 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { getGmailClient } from '@/lib/gmail';
 import { cookies } from 'next/headers';
+import type { Database } from '@/types/database';
+
+type AlertRow = Database['public']['Tables']['alerts']['Row'];
+type AlertUpdateFields = Pick<AlertRow, 'starred' | 'unread'>;
+type UpdateAction = 'star' | 'unstar' | 'read' | 'unread';
+type UpdateRequestBody = { id: string; action: UpdateAction };
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
-  // Try to get user from Supabase Auth cookie or fallback
-  const { data: { user } } = await supabaseAdmin.auth.getUser(cookieStore.get('sb-access-token')?.value || '');
-  let userId = user?.id;
-
-  if (!userId) {
-      userId = cookieStore.get('auth_user')?.value;
-  }
+  const token = cookieStore.get('sb-access-token')?.value || '';
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+  const fallbackUserId = cookieStore.get('auth_user')?.value ?? null;
+  const userId = user?.id ?? fallbackUserId;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id, action } = await req.json(); // action: 'star', 'unstar', 'read', 'unread'
+  const { id, action } = (await req.json()) as UpdateRequestBody;
 
   // Get alert to find gmailId
-  const { data: alert, error } = await supabaseAdmin
+  const { data: alertData, error } = await supabaseAdmin
     .from('alerts')
     .select('*')
     .eq('id', id)
     .eq('user_id', userId)
     .single();
+
+  const alert = alertData as AlertRow | null;
 
   if (error || !alert) {
     return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
@@ -33,9 +38,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const gmail = await getGmailClient(userId);
-    let addLabelIds: string[] = [];
-    let removeLabelIds: string[] = [];
-    let updates: any = {};
+    const addLabelIds: string[] = [];
+    const removeLabelIds: string[] = [];
+    const updates: Partial<AlertUpdateFields> = {};
 
     if (action === 'star') {
       addLabelIds.push('STARRED');
@@ -49,6 +54,8 @@ export async function POST(req: NextRequest) {
     } else if (action === 'unread') {
       addLabelIds.push('UNREAD');
       updates.unread = true;
+    } else {
+      return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
     }
 
     // Update Gmail
@@ -68,8 +75,9 @@ export async function POST(req: NextRequest) {
         .eq('id', id);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Update failed';
     console.error('Update failed', error);
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

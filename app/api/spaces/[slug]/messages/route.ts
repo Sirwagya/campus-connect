@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import type { Database } from '@/types/database';
+
+type SpaceMessageRow = Database['public']['Tables']['space_messages']['Row'];
+type SpaceMessageInsert = Database['public']['Tables']['space_messages']['Insert'];
+
+type SpaceMessageWithExtras = SpaceMessageRow & {
+    author?: {
+        id: string;
+        name?: string | null;
+        full_name?: string | null;
+        avatar_url?: string | null;
+    } | null;
+    reactions?: Array<{ emoji: string | null; user_id: string }> | null;
+};
+
+const buildErrorResponse = (error: unknown, status = 500) => {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
+};
 
 export async function GET(
     request: NextRequest,
@@ -9,7 +28,7 @@ export async function GET(
         const { slug } = await params;
         const supabase = await createServerSupabase();
         const { searchParams } = new URL(request.url);
-        const limit = parseInt(searchParams.get('limit') || '50');
+        const limit = Number.parseInt(searchParams.get('limit') || '50', 10);
         const before = searchParams.get('before'); // Timestamp for pagination
 
         // Get Space ID first (could be optimized with a join, but this is safer for RLS)
@@ -41,12 +60,12 @@ export async function GET(
         const { data: messages, error } = await query;
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return buildErrorResponse(error);
         }
 
-        return NextResponse.json({ messages: messages.reverse() }); // Return in chronological order
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ messages: ((messages ?? []) as SpaceMessageWithExtras[]).reverse() }); // Return in chronological order
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }
 
@@ -63,7 +82,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as Partial<SpaceMessageInsert> & { replyTo?: string };
         const { content, replyTo } = body;
 
         if (!content || !content.trim()) {
@@ -96,14 +115,15 @@ export async function POST(
         *,
         author:users!author_id(id, name, full_name, avatar_url)
       `)
+            .returns<SpaceMessageWithExtras>()
             .single();
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return buildErrorResponse(error);
         }
 
         return NextResponse.json({ message });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return buildErrorResponse(error);
     }
 }

@@ -15,6 +15,8 @@ export async function syncEmails(userId: string) {
   const messages = res.data.messages || [];
 
   for (const msg of messages) {
+    if (!msg.id) continue; // Skip if no message ID
+    
     // Check if exists in Supabase
     const { data: existingAlert } = await supabaseAdmin
         .from('alerts')
@@ -25,7 +27,7 @@ export async function syncEmails(userId: string) {
 
     if (existingAlert) {
       // Update labels (read/unread/starred)
-      const detail = await gmail.users.messages.get({ userId: 'me', id: msg.id!, format: 'minimal' });
+      const detail = await gmail.users.messages.get({ userId: 'me', id: msg.id, format: 'minimal' });
       const labels = detail.data.labelIds || [];
       
       await supabaseAdmin.from('alerts').update({
@@ -36,7 +38,7 @@ export async function syncEmails(userId: string) {
 
     } else {
       // Fetch full details and create
-      const detail = await gmail.users.messages.get({ userId: 'me', id: msg.id! });
+      const detail = await gmail.users.messages.get({ userId: 'me', id: msg.id });
       const payload = detail.data.payload;
       const headers = payload?.headers;
       
@@ -61,16 +63,16 @@ export async function syncEmails(userId: string) {
       await supabaseAdmin.from('alerts').insert({
         user_id: userId,
         gmail_id: msg.id,
-        thread_id: msg.threadId,
+        thread_id: msg.threadId ?? null,
         from_email: from,
         to_email: to,
         subject,
-        snippet: detail.data.snippet,
+        snippet: detail.data.snippet ?? null,
         body_text: bodyText,
         body_html: bodyHtml,
         labels: detail.data.labelIds || [],
-        starred: detail.data.labelIds?.includes('STARRED'),
-        unread: detail.data.labelIds?.includes('UNREAD'),
+        starred: detail.data.labelIds?.includes('STARRED') ?? false,
+        unread: detail.data.labelIds?.includes('UNREAD') ?? true,
         received_at: date ? new Date(date).toISOString() : new Date().toISOString(),
       });
     }

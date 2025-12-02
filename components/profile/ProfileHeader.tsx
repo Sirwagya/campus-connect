@@ -3,34 +3,46 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-  Github,
-  Linkedin,
-  Globe,
-  MapPin,
-  Calendar,
-  Eye,
-  Edit2,
-  Share2,
-  MessageSquare,
-  Twitter,
-  Code,
-} from "lucide-react";
+import { Github, Linkedin, Globe, Calendar, Eye, Twitter } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { FollowButton, PresenceIndicator } from "./FollowButton";
+
+interface User {
+  id?: string;
+  full_name?: string;
+  username?: string;
+  email?: string;
+  avatar_url?: string;
+  role?: string;
+}
+
+interface Profile {
+  id: string;
+  user?: User;
+  display_name?: string;
+  username?: string;
+  tagline?: string;
+  avatar_url?: string;
+  cover_url?: string;
+  created_at?: string;
+  visibility?: string;
+  social_links?: {
+    github?: string;
+    linkedin?: string;
+    twitter?: string;
+    website?: string;
+  };
+}
 
 interface ProfileHeaderProps {
-  profile: any;
+  profile: Profile;
   isOwner: boolean;
   isPreview: boolean;
 }
 
-export function ProfileHeader({
-  profile,
-  isOwner,
-  isPreview,
-}: ProfileHeaderProps) {
+export function ProfileHeader({ profile, isOwner }: ProfileHeaderProps) {
   const user = profile.user || {};
   const displayName = profile.display_name || user.full_name || "User";
   const username =
@@ -39,17 +51,19 @@ export function ProfileHeader({
   const avatarUrl = profile.avatar_url || user.avatar_url;
   const coverUrl = profile.cover_url;
   const role = user.role || "Student";
-  const joinedYear = new Date(profile.created_at || Date.now()).getFullYear();
+  const joinedYear = new Date(profile.created_at || "2024-01-01").getFullYear();
 
   return (
     <div className="relative w-full group">
       {/* Full Width Banner */}
       <div className="h-[300px] md:h-[400px] w-full relative overflow-hidden bg-[#121212]">
         {coverUrl ? (
-          <img
+          <Image
             src={coverUrl}
-            alt="Cover"
-            className="w-full h-full object-cover opacity-80"
+            alt="Profile cover"
+            fill
+            className="object-cover"
+            priority
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-b from-[#404040] via-[#181818] to-[#121212]" />
@@ -61,7 +75,7 @@ export function ProfileHeader({
         {/* Content Container */}
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 z-20 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-end gap-6 md:gap-8">
-            {/* Avatar - Circular & Animated */}
+            {/* Avatar - Circular & Animated with Presence */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -78,6 +92,14 @@ export function ProfileHeader({
                   {displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              {/* Presence indicator */}
+              {profile.id && (
+                <PresenceIndicator
+                  userId={profile.id}
+                  size="lg"
+                  className="bottom-3 right-3"
+                />
+              )}
             </motion.div>
 
             {/* Profile Info */}
@@ -103,7 +125,7 @@ export function ProfileHeader({
                 </div>
 
                 {/* Name */}
-                <h1 className="text-4xl md:text-7xl font-bold text-white mb-2 tracking-tight drop-shadow-lg truncate">
+                <h1 className="text-4xl md:text-7xl font-bold text-white mb-2 tracking-tight drop-shadow-lg truncate pb-2">
                   {displayName}
                 </h1>
 
@@ -128,7 +150,9 @@ export function ProfileHeader({
 
                   {/* Social Links */}
                   {profile.social_links &&
-                    Object.keys(profile.social_links).length > 0 && (
+                    Object.values(profile.social_links).some(
+                      (v) => v && String(v).trim()
+                    ) && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-white/30" />
                         <div className="flex items-center gap-3">
@@ -136,7 +160,9 @@ export function ProfileHeader({
                             <Link
                               href={profile.social_links.github}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="hover:text-white transition-colors hover:scale-110 transform duration-200"
+                              aria-label="GitHub Profile"
                             >
                               <Github className="h-4 w-4" />
                             </Link>
@@ -145,7 +171,9 @@ export function ProfileHeader({
                             <Link
                               href={profile.social_links.linkedin}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="hover:text-white transition-colors hover:scale-110 transform duration-200"
+                              aria-label="LinkedIn Profile"
                             >
                               <Linkedin className="h-4 w-4" />
                             </Link>
@@ -154,7 +182,9 @@ export function ProfileHeader({
                             <Link
                               href={profile.social_links.twitter}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="hover:text-white transition-colors hover:scale-110 transform duration-200"
+                              aria-label="Twitter Profile"
                             >
                               <Twitter className="h-4 w-4" />
                             </Link>
@@ -163,7 +193,9 @@ export function ProfileHeader({
                             <Link
                               href={profile.social_links.website}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="hover:text-white transition-colors hover:scale-110 transform duration-200"
+                              aria-label="Personal Website"
                             >
                               <Globe className="h-4 w-4" />
                             </Link>
@@ -196,8 +228,12 @@ export function ProfileHeader({
                     <Link href="/profile/edit">Edit Profile</Link>
                   </Button>
                 </>
-              ) : // Hidden actions for others as requested
-              null}
+              ) : (
+                /* Follow button for non-owners */
+                profile.id && (
+                  <FollowButton targetUserId={profile.id} showCounts />
+                )
+              )}
             </div>
           </div>
         </div>

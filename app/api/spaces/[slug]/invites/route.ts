@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
+import type { Database } from '@/types/database';
+
+type SpaceInviteInsert = Database['public']['Tables']['space_invites']['Insert'];
+
+type InviteRequestPayload = {
+  maxUses?: number;
+  expiresInDays?: number;
+};
+
+const buildErrorResponse = (error: unknown, status = 500) => {
+  const message = error instanceof Error ? error.message : 'Internal server error';
+  return NextResponse.json({ error: message }, { status });
+};
 
 // Simple random string generator to avoid external deps if possible, 
 // but if we use nanoid we need to ensure it's installed.
@@ -53,7 +66,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden: Only owners and moderators can create invites' }, { status: 403 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as InviteRequestPayload;
     const { maxUses, expiresInDays } = body;
 
     const code = generateCode(10);
@@ -69,17 +82,17 @@ export async function POST(
         created_by: session.user.id,
         max_uses: maxUses || null,
         expires_at: expiresAt
-      })
+      } satisfies SpaceInviteInsert)
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return buildErrorResponse(error);
     }
 
     return NextResponse.json({ invite });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return buildErrorResponse(error);
   }
 }
 
@@ -130,12 +143,12 @@ export async function GET(
       .order('created_at', { ascending: false });
 
     if (error) {
-      throw error;
+      return buildErrorResponse(error);
     }
 
     return NextResponse.json({ invites });
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return buildErrorResponse(error);
   }
 }

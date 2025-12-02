@@ -1,5 +1,24 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import type { Database } from "@/types/database";
+
+type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
+type EventPayload = Pick<
+    EventInsert,
+    | "title"
+    | "description"
+    | "start_ts"
+    | "end_ts"
+    | "location"
+    | "capacity"
+    | "image_path"
+    | "color_block"
+    | "tags"
+    | "category"
+    | "participation_type"
+    | "min_team_size"
+    | "max_team_size"
+>;
 
 export async function POST(request: Request) {
     const supabase = await createServerSupabase();
@@ -23,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as EventPayload;
         const {
             title,
             description,
@@ -65,7 +84,8 @@ export async function POST(request: Request) {
         if (error) throw error;
 
         return NextResponse.json({ event });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to create event";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

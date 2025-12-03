@@ -26,6 +26,8 @@ import { getDashboardData } from "./actions/dashboard";
 import { format } from "date-fns";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const { featuredEvents, announcements, trendingFeed, userName } =
     await getDashboardData();

@@ -4,6 +4,8 @@ import type { FeedPost, FeedUser, PostWithRelations } from "@/types/feed";
 import ClientFeed from "./ClientFeed";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function FeedPage() {
   const supabase = await createServerSupabase();
   const {

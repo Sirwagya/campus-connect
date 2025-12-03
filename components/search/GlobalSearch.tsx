@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
 
 interface SearchResult {
   id: string;
@@ -164,96 +163,138 @@ export function GlobalSearch() {
   // Search function
   const search = useCallback(
     async (searchQuery: string, searchCategory: string) => {
-      if (!searchQuery.trim()) {
+      if (!searchQuery.trim() && searchCategory === "all") {
         setResults([]);
         return;
       }
 
       setIsLoading(true);
-      const searchResults: SearchResult[] = [];
 
       try {
+        const promises = [];
+
         // Search users
         if (searchCategory === "all" || searchCategory === "users") {
-          const { data: users } = await supabase
-            .from("users")
-            .select("id, full_name, email, avatar_url")
-            .or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
-            .limit(5);
-
-          if (users) {
-            searchResults.push(
-              ...users.map((user) => ({
-                id: user.id,
-                type: "user" as const,
-                title: user.full_name || user.email || "Unknown",
-                subtitle: user.email || undefined,
-                imageUrl: user.avatar_url || undefined,
-                url: `/profile/${user.id}`,
-              }))
-            );
-          }
+          promises.push(
+            fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`)
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.users) {
+                  return data.users.map(
+                    (user: {
+                      id: string;
+                      full_name?: string;
+                      name?: string;
+                      email?: string;
+                      avatar_url?: string;
+                    }) => ({
+                      id: user.id,
+                      type: "user" as const,
+                      title:
+                        user.full_name || user.name || user.email || "Unknown",
+                      subtitle: user.email || undefined,
+                      imageUrl: user.avatar_url || undefined,
+                      url: `/profile/${user.id}`,
+                    })
+                  );
+                }
+                return [];
+              })
+              .catch((err) => {
+                console.error("User search error:", err);
+                return [];
+              })
+          );
+        } else {
+          promises.push(Promise.resolve([]));
         }
 
         // Search spaces
         if (searchCategory === "all" || searchCategory === "spaces") {
-          const { data: spaces } = await supabase
-            .from("spaces")
-            .select("id, name, description, icon_url")
-            .or(
-              `name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
-            )
-            .limit(5);
-
-          if (spaces) {
-            searchResults.push(
-              ...spaces.map((space) => ({
-                id: space.id,
-                type: "space" as const,
-                title: space.name,
-                subtitle:
-                  space.description?.substring(0, 50) +
-                  (space.description && space.description.length > 50
-                    ? "..."
-                    : ""),
-                imageUrl: space.icon_url || undefined,
-                url: `/spaces/${space.id}`,
-              }))
-            );
-          }
+          promises.push(
+            fetch(`/api/spaces?q=${encodeURIComponent(searchQuery)}&limit=5`)
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.spaces) {
+                  return data.spaces.map(
+                    (space: {
+                      id: string;
+                      name: string;
+                      description?: string;
+                      icon_url?: string;
+                      slug?: string;
+                    }) => ({
+                      id: space.id,
+                      type: "space" as const,
+                      title: space.name,
+                      subtitle:
+                        space.description?.substring(0, 50) +
+                        (space.description && space.description.length > 50
+                          ? "..."
+                          : ""),
+                      imageUrl: space.icon_url || undefined,
+                      url: `/spaces/${space.slug || space.id}`,
+                    })
+                  );
+                }
+                return [];
+              })
+              .catch((err) => {
+                console.error("Space search error:", err);
+                return [];
+              })
+          );
+        } else {
+          promises.push(Promise.resolve([]));
         }
 
         // Search events
         if (searchCategory === "all" || searchCategory === "events") {
-          const { data: events } = await supabase
-            .from("events")
-            .select("id, title, description, start_ts")
-            .or(
-              `title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
+          promises.push(
+            fetch(
+              `/api/events?search=${encodeURIComponent(searchQuery)}&limit=5`
             )
-            .gte("start_ts", new Date().toISOString())
-            .order("start_ts", { ascending: true })
-            .limit(5);
-
-          if (events) {
-            searchResults.push(
-              ...events.map((event) => ({
-                id: event.id,
-                type: "event" as const,
-                title: event.title,
-                subtitle: new Date(event.start_ts).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                }),
-                url: `/events/${event.id}`,
-              }))
-            );
-          }
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.events) {
+                  return data.events.map(
+                    (event: {
+                      id: string;
+                      title: string;
+                      start_ts: string;
+                    }) => ({
+                      id: event.id,
+                      type: "event" as const,
+                      title: event.title,
+                      subtitle: new Date(event.start_ts).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }
+                      ),
+                      url: `/events/${event.id}`,
+                    })
+                  );
+                }
+                return [];
+              })
+              .catch((err) => {
+                console.error("Event search error:", err);
+                return [];
+              })
+          );
+        } else {
+          promises.push(Promise.resolve([]));
         }
 
-        setResults(searchResults);
+        const [userResults, spaceResults, eventResults] = await Promise.all(
+          promises
+        );
+
+        setResults([...userResults, ...spaceResults, ...eventResults]);
         setSelectedIndex(0);
       } catch (error) {
         console.error("Search error:", error);
@@ -470,7 +511,7 @@ export function GlobalSearch() {
 
                 {/* Results */}
                 <div className="max-h-[50vh] overflow-y-auto">
-                  {query ? (
+                  {query || category !== "all" ? (
                     results.length > 0 ? (
                       <div className="p-2">
                         {results.map((result, index) => (
@@ -528,11 +569,15 @@ export function GlobalSearch() {
                             d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        <p>No results found for &quot;{query}&quot;</p>
+                        <p>
+                          {query
+                            ? `No results found for "${query}"`
+                            : `No ${category} found`}
+                        </p>
                       </div>
                     )
-                  ) : (
-                    /* Quick actions when no query */
+                  ) : /* Quick actions when no query AND category is 'all' */
+                  category === "all" ? (
                     <div className="p-2">
                       <p className="px-3 py-2 text-xs font-semibold uppercase text-gray-500">
                         Quick Actions
@@ -555,6 +600,11 @@ export function GlobalSearch() {
                           )}
                         </button>
                       ))}
+                    </div>
+                  ) : (
+                    /* Show empty state or loading if category is specific but no results yet (should be handled by results.length check above, but if results are empty after fetch...) */
+                    <div className="p-8 text-center text-gray-500">
+                      <p>No {category} found.</p>
                     </div>
                   )}
                 </div>

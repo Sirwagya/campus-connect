@@ -3,27 +3,28 @@ import { createServerSupabase } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
     try {
+        const supabase = await createServerSupabase();
         const { searchParams } = new URL(request.url);
         const query = searchParams.get('q');
 
-        if (!query || query.length < 2) {
-            return NextResponse.json({ users: [] });
-        }
-
-        const supabase = await createServerSupabase();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Search users by name or email (if available in public profile)
-        // We limit to 5 results for dropdown
-        const { data: users, error } = await supabase
+        let queryBuilder = supabase
             .from('users')
-            .select('id, name, full_name, email, avatar_url')
-            .or(`name.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%`)
-            .limit(5);
+            .select('id, name, full_name, email, avatar_url');
+
+        if (query && query.length >= 1) {
+            queryBuilder = queryBuilder.or(`name.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%`);
+        } else {
+            // Return recent users if no query
+            queryBuilder = queryBuilder.order('created_at', { ascending: false });
+        }
+
+        const { data: users, error } = await queryBuilder.limit(5);
 
         if (error) throw error;
 

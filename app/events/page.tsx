@@ -30,17 +30,17 @@ export default async function EventsPage() {
 
   return (
     <main className="min-h-screen bg-black text-white pb-20">
-      <div className="container max-w-7xl mx-auto py-8 px-4 md:px-8">
+      <div className="container max-w-7xl mx-auto py-8 px-8 lg:px-12">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Events</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-light mb-2 tracking-tight">Events</h1>
+            <p className="text-white/60 font-light">
               Discover workshops, hackathons, and meetups on campus.
             </p>
           </div>
           {isAdmin && (
             <Link href="/admin/events/create">
-              <Button className="bg-primary hover:bg-primary/90 text-white font-bold shadow-[0_0_15px_rgba(155,92,255,0.3)]">
+              <Button className="bg-primary hover:bg-primary/90 text-white font-bold shadow-glow rounded-full px-6">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Event
               </Button>
@@ -53,8 +53,10 @@ export default async function EventsPage() {
             <EventCard key={event.id} event={event} />
           ))}
           {(!events || events.length === 0) && (
-            <div className="col-span-full text-center py-20 border border-dashed border-white/10 rounded-xl bg-[#18181B]/50">
-              <p className="text-gray-400">No upcoming events found.</p>
+            <div className="col-span-full text-center py-20 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+              <p className="text-white/40 font-light">
+                No upcoming events found.
+              </p>
             </div>
           )}
         </div>

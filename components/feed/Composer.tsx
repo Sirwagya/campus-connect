@@ -119,11 +119,16 @@ export function Composer({ user, onPostCreated }: ComposerProps) {
   };
 
   return (
-    <div className="mb-8 rounded-2xl bg-[#18181B]/50 backdrop-blur-sm border border-white/5 p-5 shadow-lg transition-all focus-within:ring-1 focus-within:ring-[#a970ff]/50 focus-within:bg-[#18181B]">
+    <div className="mb-8 rounded-2xl glass-panel p-5 transition-all focus-within:ring-1 focus-within:ring-primary/50 focus-within:bg-white/10">
       <div className="flex gap-4">
         <Avatar className="h-11 w-11 border border-white/10 shadow-sm">
-          <AvatarImage src={user.avatar_url ?? undefined} alt={user.name || "User"} />
-          <AvatarFallback>{user.name?.[0] || user.email?.[0] || "?"}</AvatarFallback>
+          <AvatarImage
+            src={user.avatar_url ?? undefined}
+            alt={user.name || "User"}
+          />
+          <AvatarFallback>
+            {user.name?.[0] || user.email?.[0] || "?"}
+          </AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-4">
           <Textarea

@@ -22,7 +22,7 @@ export function EventCard({ event }: EventCardProps) {
         transition={{ type: "spring", stiffness: 300 }}
         className="group h-full"
       >
-        <Card className="overflow-hidden bg-[#18181B] border-white/5 hover:border-white/10 transition-all h-full flex flex-col relative">
+        <Card className="overflow-hidden glass-panel border-white/10 hover:border-white/20 transition-all h-full flex flex-col relative rounded-2xl">
           {/* Banner Image Area */}
           <div
             className="aspect-video w-full bg-cover bg-center relative group-hover:opacity-90 transition-opacity"

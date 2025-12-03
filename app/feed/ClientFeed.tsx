@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Composer } from "@/components/feed/Composer";
 import { PostList } from "@/components/feed/PostList";
 import { NewPostsBanner } from "@/components/feed/NewPostsBanner";
+import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { createClient } from "@/lib/supabase/client";
 import { normalizeFeedPost } from "@/lib/feed/normalize";
 import type {
@@ -37,7 +38,7 @@ export default function ClientFeed({
   const refreshFeed = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch('/api/feed?limit=10');
+      const res = await fetch("/api/feed?limit=10");
       const data = (await res.json()) as FeedResponse;
 
       if (data.posts) {
@@ -81,8 +82,10 @@ export default function ClientFeed({
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "posts" },
         async (payload: RealtimePostgresChangesPayload<PostWithRelations>) => {
-          const newRecord = payload.new as PostWithRelations | Record<string, never>;
-          if (!('id' in newRecord) || !newRecord.id) return;
+          const newRecord = payload.new as
+            | PostWithRelations
+            | Record<string, never>;
+          if (!("id" in newRecord) || !newRecord.id) return;
           const newPostId = newRecord.id;
 
           // Check if we already have this post (e.g. from optimistic update)
@@ -109,7 +112,10 @@ export default function ClientFeed({
               // Filter out optimistic post if it matches (hard to know without correlation ID,
               // but we can filter by content/user if needed, or just prepend and let React key handle it if we replace)
               // Simple approach: Prepend real post.
-              const normalized = normalizeFeedPost(fullPost as PostWithRelations, user.id);
+              const normalized = normalizeFeedPost(
+                fullPost as PostWithRelations,
+                user.id
+              );
 
               // Remove optimistic version if the ID differs but content/user match
               const filtered = prev.filter(
@@ -140,9 +146,11 @@ export default function ClientFeed({
       {/* New Posts Banner */}
       <NewPostsBanner onRefresh={refreshFeed} />
 
-      <div className="sticky top-0 z-30 bg-[#0E0E10]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 mb-6">
-        <h1 className="text-xl font-bold text-white tracking-tight">
-          {isRefreshing ? 'Refreshing...' : 'Home'}
+      <DashboardHero />
+
+      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-6 py-4 mb-6">
+        <h1 className="text-xl font-light tracking-tight text-white">
+          {isRefreshing ? "Refreshing..." : "Latest Updates"}
         </h1>
       </div>
 

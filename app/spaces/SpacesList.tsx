@@ -48,29 +48,29 @@ export function SpacesList({
   return (
     <div className="space-y-10">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#1f1f1f]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/10">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-white tracking-tight">
+          <h1 className="text-4xl font-light text-white tracking-tight">
             Community Spaces
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl">
+          <p className="text-white/60 text-lg max-w-xl font-light">
             Join discussions, find your squad, and collaborate on projects.
           </p>
         </div>
 
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-white transition-colors" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 group-hover:text-white transition-colors" />
             <Input
               placeholder="Search spaces..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
-              className={`pl-10 bg-[#131313] border-[#1f1f1f] text-white h-11 transition-all duration-300 ${
+              className={`pl-10 bg-white/5 border-white/10 text-white h-11 transition-all duration-300 rounded-xl placeholder:text-white/20 ${
                 isSearchFocused
-                  ? "w-full md:w-[300px] ring-1 ring-primary border-primary"
-                  : "w-full md:w-[240px] hover:border-white/20"
+                  ? "w-full md:w-[300px] ring-1 ring-primary/50 border-primary/50 bg-white/10"
+                  : "w-full md:w-[240px] hover:bg-white/10 hover:border-white/20"
               }`}
             />
           </div>
@@ -87,14 +87,14 @@ export function SpacesList({
       {/* Grid Layout */}
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
         {filteredSpaces.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-32 border border-dashed border-[#1f1f1f] rounded-3xl bg-gradient-to-b from-[#131313] to-transparent">
-            <div className="bg-[#18181B] p-6 rounded-full mb-6 shadow-xl">
-              <MessageSquare className="h-12 w-12 text-muted-foreground" />
+          <div className="col-span-full flex flex-col items-center justify-center py-32 border border-dashed border-white/10 rounded-3xl bg-white/[0.02]">
+            <div className="bg-white/5 p-6 rounded-full mb-6 shadow-glow">
+              <MessageSquare className="h-12 w-12 text-white/40" />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-3">
+            <h3 className="text-2xl font-light text-white mb-3 tracking-tight">
               No spaces found
             </h3>
-            <p className="text-muted-foreground mb-8 max-w-md text-center text-lg">
+            <p className="text-white/40 mb-8 max-w-md text-center text-lg font-light">
               {searchQuery
                 ? `No results for "${searchQuery}". Try a different search term.`
                 : "Be the first to create a community space and start the conversation!"}
@@ -103,7 +103,7 @@ export function SpacesList({
               variant="outline"
               size="lg"
               onClick={() => setIsModalOpen(true)}
-              className="border-[#1f1f1f] text-white hover:bg-[#1f1f1f] hover:text-primary h-12 px-8"
+              className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white h-12 px-8 rounded-xl backdrop-blur-md"
             >
               Create New Space
             </Button>

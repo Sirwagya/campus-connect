@@ -67,8 +67,8 @@ export async function GET(request: Request) {
       // Continue anyway - user is authenticated
     }
 
-    // Redirect to alerts page
-    return NextResponse.redirect(`${requestUrl.origin}/alerts`)
+    // Redirect to feed page
+    return NextResponse.redirect(`${requestUrl.origin}/feed`)
   }
 
   // No code present

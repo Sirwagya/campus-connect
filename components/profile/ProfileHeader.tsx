@@ -62,15 +62,15 @@ export function ProfileHeader({ profile, isOwner }: ProfileHeaderProps) {
             src={coverUrl}
             alt="Profile cover"
             fill
-            className="object-cover"
+            className="object-cover opacity-80"
             priority
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-b from-[#404040] via-[#181818] to-[#121212]" />
+          <div className="w-full h-full bg-gradient-to-b from-primary/20 via-black to-black" />
         )}
 
         {/* Gradient Overlay (Vignette) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10" />
 
         {/* Content Container */}
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 z-20 max-w-7xl mx-auto">
@@ -80,15 +80,15 @@ export function ProfileHeader({ profile, isOwner }: ProfileHeaderProps) {
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="relative shrink-0 shadow-[0_8px_40px_rgba(0,0,0,0.5)] rounded-full"
+              className="relative shrink-0 shadow-glow rounded-full"
             >
-              <Avatar className="h-32 w-32 md:h-48 md:w-48 border-[6px] border-[#121212] shadow-2xl">
+              <Avatar className="h-32 w-32 md:h-48 md:w-48 border-[6px] border-black shadow-2xl">
                 <AvatarImage
                   src={avatarUrl}
                   alt={displayName}
                   className="object-cover"
                 />
-                <AvatarFallback className="text-4xl bg-[#282828] text-white">
+                <AvatarFallback className="text-4xl bg-white/10 text-white backdrop-blur-md">
                   {displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>

@@ -124,15 +124,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 🌐 LOGIN HANDLER (Server-side OAuth)
   const signIn = () => {
-    console.log("[AuthProvider] Redirecting to /api/auth/login");
-    window.location.href = "/api/auth/login";
+    console.log("[AuthProvider] Redirecting to /api/auth/google");
+    window.location.href = "/api/auth/google";
   };
 
   // 🌐 LOGOUT
   const signOut = async () => {
     console.log("[AuthProvider] Signing out...");
     await supabase.auth.signOut();
-    window.location.href = "/login"; // Let middleware.ts guard all other pages
+    window.location.href = "/api/auth/google"; // Redirect to login (OAuth)
   };
 
   return (

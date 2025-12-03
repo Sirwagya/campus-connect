@@ -55,10 +55,10 @@ export function AlertSidebar({
             key={item.id}
             variant="ghost"
             className={cn(
-              "w-full justify-start rounded-r-full rounded-l-none pl-6 font-medium h-10",
+              "w-full justify-start rounded-r-full rounded-l-none pl-6 font-medium h-10 transition-all duration-300",
               activeTab === item.id
-                ? "bg-[#2d1f38] text-[#d2a8ff]" // Active state: dark purple bg, light purple text
-                : "text-gray-400 hover:text-white hover:bg-white/5"
+                ? "bg-primary/20 text-primary border-l-2 border-primary" // Active state: glass purple
+                : "text-white/40 hover:text-white hover:bg-white/5"
             )}
             onClick={() => onTabChange(item.id)}
           >

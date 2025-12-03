@@ -91,53 +91,53 @@ export default function AlertsPage() {
     return () => clearInterval(interval);
   }, [fetchAlerts, handleSync]);
 
-  const handleAcceptInvite = useCallback(
-    async (notification: Notification) => {
-      const spaceSlug = notification.data?.space_slug;
-      if (!spaceSlug) {
-        alert("This invite is missing space information.");
-        return;
+  const handleAcceptInvite = useCallback(async (notification: Notification) => {
+    const spaceSlug = notification.data?.space_slug;
+    if (!spaceSlug) {
+      alert("This invite is missing space information.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/spaces/${spaceSlug}/join`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to join space");
       }
 
-      try {
-        const res = await fetch(`/api/spaces/${spaceSlug}/join`, {
-          method: "POST",
-        });
+      // Mark notification as read
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: notification.id, is_read: true }),
+      });
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to join space");
-        }
+      // Optimistically update the notification state immediately
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notification.id ? { ...n, is_read: true } : n
+        )
+      );
 
-        // Mark notification as read
-        await fetch("/api/notifications", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: notification.id, is_read: true }),
-        });
-
-        // Optimistically update the notification state immediately
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notification.id ? { ...n, is_read: true } : n
-          )
-        );
-
-        alert("Successfully joined space!");
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Failed to join space";
-        alert(message);
-      }
-    },
-    []
-  );
+      alert("Successfully joined space!");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to join space";
+      alert(message);
+    }
+  }, []);
 
   const unreadCount = alerts.filter((alert) => alert.unread).length;
-  const notificationCount = notifications.filter((notification) => !notification.is_read).length;
+  const notificationCount = notifications.filter(
+    (notification) => !notification.is_read
+  ).length;
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
-      <header className="h-16 border-b border-white/10 flex items-center px-4 gap-4 bg-[#18181B]">
+      <header className="h-16 border-b border-white/10 flex items-center px-8 lg:px-12 gap-4 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
         <Button
           variant="ghost"
           size="icon"
@@ -147,13 +147,15 @@ export default function AlertsPage() {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold hidden md:block">CampusMail</h1>
+        <h1 className="text-xl font-light tracking-tight hidden md:block">
+          CampusMail
+        </h1>
 
         <div className="flex-1 max-w-2xl mx-auto relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
             placeholder="Search mail..."
-            className="pl-10 bg-[#27272a] border-none text-white focus-visible:ring-1 focus-visible:ring-white/20"
+            className="pl-10 bg-white/5 border-white/10 text-white focus-visible:ring-1 focus-visible:ring-primary/50 rounded-xl placeholder:text-white/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -164,7 +166,7 @@ export default function AlertsPage() {
           size="icon"
           onClick={handleSync}
           disabled={syncing}
-          className="text-gray-400 hover:text-white"
+          className="text-white/60 hover:text-white hover:bg-white/10 rounded-full"
         >
           <RefreshCw className={cn("h-5 w-5", syncing && "animate-spin")} />
         </Button>
@@ -178,23 +180,31 @@ export default function AlertsPage() {
           notificationCount={notificationCount}
         />
 
-        <main className="flex-1 overflow-y-auto bg-[#0E0E10] rounded-tl-2xl border-l border-t border-white/5 mt-2 mr-2 mb-2 p-0">
+        <main className="flex-1 overflow-y-auto bg-transparent rounded-tl-2xl border-l border-t border-white/5 mt-2 mr-2 mb-2 p-0">
           {activeTab === "notifications" ? (
             <div className="p-4 space-y-2">
               {notifications.length === 0 ? (
-                <div className="text-center py-20 text-gray-500">No notifications</div>
+                <div className="text-center py-20 text-gray-500">
+                  No notifications
+                </div>
               ) : (
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
                     className={cn(
-                      "p-4 rounded-lg border border-white/5 flex items-center justify-between",
-                      !notification.is_read ? "bg-[#18181B]" : "opacity-70"
+                      "p-4 rounded-xl border border-white/5 flex items-center justify-between transition-colors",
+                      !notification.is_read
+                        ? "bg-white/5 hover:bg-white/10"
+                        : "opacity-60 hover:opacity-100"
                     )}
                   >
                     <div>
-                      <h3 className="font-bold text-white">{notification.title}</h3>
-                      <p className="text-gray-400 text-sm">{notification.message}</p>
+                      <h3 className="font-bold text-white">
+                        {notification.title}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {notification.message}
+                      </p>
                     </div>
                     {notification.type === "space_invite" &&
                       (notification.is_read ? (
@@ -222,9 +232,13 @@ export default function AlertsPage() {
           ) : (
             <div className="divide-y divide-white/5">
               {loading ? (
-                <div className="text-center py-20 text-gray-500">Loading...</div>
+                <div className="text-center py-20 text-gray-500">
+                  Loading...
+                </div>
               ) : alerts.length === 0 ? (
-                <div className="text-center py-20 text-gray-500">No messages found</div>
+                <div className="text-center py-20 text-gray-500">
+                  No messages found
+                </div>
               ) : (
                 <AnimatePresence>
                   {alerts.map((alert) => (

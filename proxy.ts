@@ -39,9 +39,10 @@ export async function proxy(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/profile") && // Allow public profiles
     !request.nextUrl.pathname.startsWith("/api/profiles") && // Allow public profile APIs
     !request.nextUrl.pathname.startsWith("/_next") &&
-    !request.nextUrl.pathname.includes(".") // static files
+    !request.nextUrl.pathname.includes(".") && // static files
+    request.nextUrl.pathname !== "/" // Allow landing page
   ) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/api/auth/google", request.url));
   }
 
   // Domain validation (if user is logged in)
@@ -51,7 +52,12 @@ export async function proxy(request: NextRequest) {
     if (!email.endsWith(`@${allowedDomain}`)) {
       // Sign out if invalid domain
       await supabase.auth.signOut();
-      return NextResponse.redirect(new URL("/login?error=invalid_domain", request.url));
+      return NextResponse.redirect(new URL("/api/auth/google?error=invalid_domain", request.url));
+    }
+
+    // Redirect authenticated users from landing page to feed
+    if (request.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL("/feed", request.url));
     }
   }
 

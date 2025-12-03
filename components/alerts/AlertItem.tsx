@@ -21,9 +21,7 @@ export function AlertItem({ alert, onToggleStar }: AlertItemProps) {
       exit={{ opacity: 0, height: 0 }}
       className={cn(
         "group flex items-center gap-4 p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer",
-        alert.unread
-          ? "bg-[#18181B] text-white"
-          : "bg-transparent text-gray-400"
+        alert.unread ? "bg-white/5 text-white" : "bg-transparent text-white/60"
       )}
     >
       <div

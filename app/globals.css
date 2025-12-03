@@ -1,36 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* Premium Dark Theme (Spotify x GitHub) */
-  --background: #0d0d0f; /* Deepest black/gray */
+  /* Premium Dark Theme (VedHub) */
+  --background: #000000;
   --foreground: #ffffff;
 
-  --card: #18181b; /* Slightly lighter for cards */
+  --card: rgba(255, 255, 255, 0.03);
   --card-foreground: #ffffff;
 
-  --popover: #18181b;
+  --popover: #0a0a0a;
   --popover-foreground: #ffffff;
 
-  --primary: #a970ff; /* Vivid Purple Accent */
+  --primary: #6b4fff; /* Electric Purple */
   --primary-foreground: #ffffff;
 
-  --secondary: #27272a;
+  --secondary: rgba(255, 255, 255, 0.1);
   --secondary-foreground: #ffffff;
 
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: rgba(255, 255, 255, 0.6);
 
-  --accent: #a970ff;
+  --accent: #6b4fff;
   --accent-foreground: #ffffff;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #a970ff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #6b4fff;
 
-  --radius: 0.75rem; /* Slightly more rounded */
+  --radius: 1rem; /* Modern rounded corners */
 }
 
 @theme inline {
@@ -53,12 +53,13 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: calc(var(--radius) - 1px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
 
-  /* Custom Shadows */
-  --shadow-glow: 0 0 20px rgba(155, 92, 255, 0.3);
+  /* Custom Shadows & Glows */
+  --shadow-glow: 0 0 40px rgba(107, 79, 255, 0.15);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 body {
@@ -67,6 +68,9 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 /* Shimmer animation for skeleton loading */
@@ -74,4 +78,84 @@ body {
   100% {
     transform: translateX(100%);
   }
+}
+
+/* Landing Page Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 40px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0; /* Start hidden */
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  @apply bg-white/5 border border-white/10 backdrop-blur-xl shadow-glass;
+}
+
+.glass-button {
+  @apply bg-white/5 border border-white/10 text-white hover:bg-white/10 backdrop-blur-md transition-all duration-300;
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(107, 79, 255, 0.5);
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white/80 to-white/60;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Global Typography Overrides */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-light tracking-tight;
+}
+
+p {
+  @apply font-light tracking-wide text-white/80;
 }

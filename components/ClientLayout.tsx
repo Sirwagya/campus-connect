@@ -33,13 +33,14 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
   const pathname = usePathname();
   const isLoginPage = pathname === "/login";
+  const isLandingPage = pathname === "/";
 
   if (loading) {
     return <LoadingSkeleton />;
   }
 
-  // If on login page, render without sidebar/nav
-  if (isLoginPage) {
+  // If on login page or landing page, render without sidebar/nav
+  if (isLoginPage || isLandingPage) {
     return <ToastProvider>{children}</ToastProvider>;
   }
 
@@ -53,7 +54,9 @@ export function ClientLayout({ children }: { children: ReactNode }) {
           <div className="flex min-h-screen flex-col md:flex-row bg-black text-white">
             <Sidebar />
             <main className="flex-1 w-full min-w-0 pb-16 md:pb-0">
-              <div className="container mx-auto max-w-7xl p-4 md:p-8">{children}</div>
+              <div className="container mx-auto max-w-7xl p-4 md:p-8">
+                {children}
+              </div>
             </main>
             <BottomNav />
           </div>

@@ -13,7 +13,7 @@ export default async function FeedPage() {
   } = await supabase.auth.getSession();
 
   if (!session) {
-    redirect("/login");
+    redirect("/api/auth/google");
   }
 
   // Fetch current user's profile

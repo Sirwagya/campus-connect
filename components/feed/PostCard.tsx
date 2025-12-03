@@ -66,7 +66,7 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "mb-6 rounded-xl bg-white/[0.03] border border-white/5 p-5 transition-all hover:bg-white/[0.05] hover:border-white/10 shadow-sm",
+        "mb-6 rounded-2xl glass-panel p-5 transition-all hover:bg-white/10 hover:border-white/20",
         post.isOptimistic && "opacity-70"
       )}
     >
@@ -166,7 +166,11 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
           )}
 
           {/* Reaction Summary */}
-          <ReactionSummary targetType="post" targetId={post.id} className="mb-2" />
+          <ReactionSummary
+            targetType="post"
+            targetId={post.id}
+            className="mb-2"
+          />
 
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-2">

@@ -87,7 +87,7 @@ export function Sidebar() {
       initial={{ width: 256 }}
       animate={{ width: isCollapsed ? 80 : 256 }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="hidden h-screen flex-col border-r border-[#1f1f1f] bg-black md:flex sticky top-0 z-50"
+      className="hidden h-screen flex-col border-r border-white/10 bg-black/80 backdrop-blur-xl md:flex sticky top-0 z-50"
     >
       {/* Header */}
       <div className="flex h-20 items-center justify-between px-6">
@@ -99,10 +99,10 @@ export function Sidebar() {
               exit={{ opacity: 0 }}
               className="flex items-center gap-2"
             >
-              <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(155,92,255,0.3)]">
+              <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center shadow-glow">
                 <span className="font-bold text-white text-lg">V</span>
               </div>
-              <span className="text-lg font-bold tracking-tight text-white whitespace-nowrap">
+              <span className="text-lg font-light tracking-tight text-white whitespace-nowrap">
                 Ved Hub
               </span>
             </motion.div>
@@ -112,7 +112,7 @@ export function Sidebar() {
           variant="ghost"
           size="icon"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-muted-foreground hover:text-white hover:bg-transparent p-0"
+          className="text-white/60 hover:text-white hover:bg-white/5 p-0"
         >
           {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </Button>
@@ -135,22 +135,24 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-4 px-4 py-3 rounded-md transition-all group relative overflow-hidden",
+                "flex items-center gap-4 px-4 py-3 rounded-xl transition-all group relative overflow-hidden",
                 isActive
-                  ? "bg-[#282828] text-white font-medium"
-                  : "text-muted-foreground hover:text-white hover:bg-[#121212]"
+                  ? "bg-white/10 text-white font-medium shadow-glass"
+                  : "text-white/60 hover:text-white hover:bg-white/5"
               )}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeNav"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-primary rounded-r-full shadow-[0_0_10px_#9b5cff]"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-primary rounded-r-full shadow-glow"
                 />
               )}
               <Icon
                 className={cn(
                   "h-5 w-5 shrink-0 transition-colors",
-                  isActive ? "text-primary" : "group-hover:text-white"
+                  isActive
+                    ? "text-primary drop-shadow-[0_0_8px_rgba(107,79,255,0.5)]"
+                    : "group-hover:text-white"
                 )}
               />
               <AnimatePresence>
@@ -159,7 +161,7 @@ export function Sidebar() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="whitespace-nowrap"
+                    className="whitespace-nowrap font-light tracking-wide"
                   >
                     {item.label}
                   </motion.span>
@@ -178,7 +180,7 @@ export function Sidebar() {
                 isCollapsed ? "opacity-0" : "opacity-100"
               )}
             >
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              <span className="text-xs font-bold text-white/40 uppercase tracking-wider">
                 Admin
               </span>
             </div>
@@ -191,10 +193,10 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-4 px-4 py-3 rounded-md transition-all group relative overflow-hidden",
+                    "flex items-center gap-4 px-4 py-3 rounded-xl transition-all group relative overflow-hidden",
                     isActive
-                      ? "bg-[#282828] text-white font-medium"
-                      : "text-muted-foreground hover:text-white hover:bg-[#121212]"
+                      ? "bg-white/10 text-white font-medium shadow-glass"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
@@ -204,7 +206,7 @@ export function Sidebar() {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
-                        className="whitespace-nowrap"
+                        className="whitespace-nowrap font-light tracking-wide"
                       >
                         {item.label}
                       </motion.span>
@@ -218,22 +220,22 @@ export function Sidebar() {
       </nav>
 
       {/* Footer / User */}
-      <div className="p-4 bg-black/50 backdrop-blur-xl border-t border-[#1f1f1f]">
+      <div className="p-4 bg-black/40 backdrop-blur-xl border-t border-white/10">
         {user ? (
           <Link
             href={`/profile/${user.id}`}
             className={cn(
-              "flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer hover:bg-[#282828] group",
+              "flex items-center gap-3 p-2 rounded-xl transition-colors cursor-pointer hover:bg-white/5 group",
               isCollapsed && "justify-center"
             )}
           >
             <div className="relative">
-              <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary transition-colors">
+              <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary/50 transition-colors">
                 <AvatarImage
                   src={avatarUrl || undefined}
                   className="object-cover"
                 />
-                <AvatarFallback className="bg-[#282828] text-muted-foreground">
+                <AvatarFallback className="bg-white/10 text-white/60">
                   {user.email?.charAt(0).toUpperCase() || (
                     <UserIcon className="h-5 w-5" />
                   )}
@@ -244,10 +246,11 @@ export function Sidebar() {
               <span
                 className={cn(
                   "absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-black",
-                  presenceStatus === "online" && "bg-green-500",
+                  presenceStatus === "online" &&
+                    "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]",
                   presenceStatus === "away" && "bg-yellow-500",
                   presenceStatus === "busy" && "bg-red-500",
-                  presenceStatus === "offline" && "bg-gray-500"
+                  presenceStatus === "offline" && "bg-white/20"
                 )}
               />
             </div>
@@ -259,10 +262,10 @@ export function Sidebar() {
                   exit={{ opacity: 0, width: 0 }}
                   className="flex flex-col overflow-hidden min-w-0"
                 >
-                  <span className="text-sm font-bold truncate text-white group-hover:text-primary transition-colors">
+                  <span className="text-sm font-medium truncate text-white group-hover:text-primary transition-colors">
                     {user.email?.split("@")[0]}
                   </span>
-                  <span className="text-xs text-muted-foreground truncate">
+                  <span className="text-xs text-white/40 truncate">
                     View Profile
                   </span>
                 </motion.div>
@@ -271,9 +274,7 @@ export function Sidebar() {
           </Link>
         ) : (
           !isCollapsed && (
-            <div className="px-2 mb-4 text-sm text-muted-foreground">
-              Not signed in
-            </div>
+            <div className="px-2 mb-4 text-sm text-white/40">Not signed in</div>
           )
         )}
 
@@ -282,26 +283,26 @@ export function Sidebar() {
           <Link
             href="/profile/settings"
             className={cn(
-              "flex items-center gap-3 w-full p-2 rounded-md text-muted-foreground hover:text-white hover:bg-[#282828] transition-colors mt-2",
+              "flex items-center gap-3 w-full p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors mt-2",
               isCollapsed && "justify-center",
-              pathname === "/profile/settings" && "bg-[#282828] text-white"
+              pathname === "/profile/settings" && "bg-white/10 text-white"
             )}
           >
             <Cog className="h-5 w-5 shrink-0" />
-            {!isCollapsed && <span>Settings</span>}
+            {!isCollapsed && <span className="font-light">Settings</span>}
           </Link>
         )}
 
         <Button
           variant="ghost"
           className={cn(
-            "w-full justify-start gap-3 text-muted-foreground hover:text-white hover:bg-transparent mt-2",
+            "w-full justify-start gap-3 text-white/60 hover:text-white hover:bg-white/5 mt-2 rounded-xl",
             isCollapsed && "justify-center px-0"
           )}
           onClick={signOut}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!isCollapsed && <span>Sign Out</span>}
+          {!isCollapsed && <span className="font-light">Sign Out</span>}
         </Button>
       </div>
     </motion.aside>

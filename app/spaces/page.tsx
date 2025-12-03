@@ -45,7 +45,7 @@ export default async function SpacesPage() {
 
   return (
     <main className="min-h-screen bg-black text-white pb-20">
-      <div className="container max-w-[1280px] mx-auto py-12 px-6 md:px-10">
+      <div className="container max-w-[1280px] mx-auto py-12 px-8 lg:px-12">
         <SpacesList
           initialSpaces={spaces || []}
           isAdmin={isAdmin}

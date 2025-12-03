@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePresenceContext } from "./PresenceProvider";
 import { GlobalSearch } from "./search/GlobalSearch";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/Avatar";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -55,16 +56,26 @@ export function Sidebar() {
     async function fetchAvatar() {
       if (!user) return;
 
-      const { data } = await supabase
-        .from("users")
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("avatar_url")
         .eq("id", user.id)
         .single();
 
-      if (data?.avatar_url) {
-        setAvatarUrl(data.avatar_url);
-      } else if (user.user_metadata?.avatar_url) {
-        setAvatarUrl(user.user_metadata.avatar_url);
+      if (profile?.avatar_url) {
+        setAvatarUrl(profile.avatar_url);
+      } else {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("avatar_url")
+          .eq("id", user.id)
+          .single();
+
+        if (userData?.avatar_url) {
+          setAvatarUrl(userData.avatar_url);
+        } else if (user.user_metadata?.avatar_url) {
+          setAvatarUrl(user.user_metadata.avatar_url);
+        }
       }
     }
 
@@ -216,18 +227,19 @@ export function Sidebar() {
               isCollapsed && "justify-center"
             )}
           >
-            <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-transparent group-hover:border-primary transition-colors">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={user.email || "User"}
-                  className="aspect-square h-full w-full object-cover"
+            <div className="relative">
+              <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary transition-colors">
+                <AvatarImage
+                  src={avatarUrl || undefined}
+                  className="object-cover"
                 />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[#282828] text-muted-foreground">
-                  <UserIcon className="h-5 w-5" />
-                </div>
-              )}
+                <AvatarFallback className="bg-[#282828] text-muted-foreground">
+                  {user.email?.charAt(0).toUpperCase() || (
+                    <UserIcon className="h-5 w-5" />
+                  )}
+                </AvatarFallback>
+              </Avatar>
+
               {/* Presence indicator */}
               <span
                 className={cn(

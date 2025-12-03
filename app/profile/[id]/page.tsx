@@ -92,12 +92,6 @@ export default async function ProfilePage({
                 >
                   Projects
                 </TabsTrigger>
-                <TabsTrigger
-                  value="about"
-                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  About
-                </TabsTrigger>
               </TabsList>
 
               {/* Tab: Overview */}
@@ -106,8 +100,9 @@ export default async function ProfilePage({
                 className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
               >
                 <IntegrationsPanel profile={profile} isOwner={isOwner} />
-                <div className="block lg:hidden">
-                  {/* Mobile: Show Skills here too if sidebar is stacked */}
+                <div className="block lg:hidden space-y-8">
+                  {/* Mobile: Show About then Skills here too if sidebar is stacked */}
+                  <ProfileAbout profile={profile} />
                   <SkillsAndTags
                     skills={profile.skills || []}
                     isOwner={isOwner}
@@ -122,19 +117,14 @@ export default async function ProfilePage({
               >
                 <ProfileProjects projects={profile.projects || []} />
               </TabsContent>
-
-              {/* Tab: About */}
-              <TabsContent
-                value="about"
-                className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-              >
-                <ProfileAbout profile={profile} />
-              </TabsContent>
             </Tabs>
           </div>
 
           {/* Right Column (Sidebar) - Spans 4 cols */}
           <div className="lg:col-span-4 space-y-8 hidden lg:block">
+            {/* About Section (Moved from Tabs) */}
+            <ProfileAbout profile={profile} />
+
             {/* Skills & Tags */}
             <SkillsAndTags skills={profile.skills || []} isOwner={isOwner} />
           </div>

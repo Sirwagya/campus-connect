@@ -75,10 +75,10 @@ export function GitHubHeatmap({
   // Use internal API URL
   const chartUrl = useMemo(() => {
     if (userId) {
-      return `/api/profiles/${userId}/graph/github?t=${Date.now()}`; // Force refresh for debugging
+      return `/api/profiles/${userId}/graph/github`;
     }
     if (username) {
-      return `/api/github/graph?username=${username}&t=${Date.now()}`;
+      return `/api/github/graph?username=${username}`;
     }
     return null;
   }, [userId, username]);

@@ -42,7 +42,7 @@ export async function proxy(request: NextRequest) {
     !request.nextUrl.pathname.includes(".") && // static files
     request.nextUrl.pathname !== "/" // Allow landing page
   ) {
-    return NextResponse.redirect(new URL("/api/auth/google", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Domain validation (if user is logged in)

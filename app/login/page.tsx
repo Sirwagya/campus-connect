@@ -8,20 +8,26 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/Card";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const { signIn, loading } = useAuth();
+  const router = useRouter();
 
-  // ⚠️ REMOVED: Client-side redirect that causes loop
-  // The proxy.ts handles all redirects server-side
+  useEffect(() => {
+    // Auto-redirect to Google OAuth if no error is present
+    // Using window.location.assign to ensure a hard navigation and avoid CORS issues
+    if (!error) {
+      window.location.assign("/api/auth/google");
+    }
+  }, [error]);
 
   const handleLogin = async () => {
-    await signIn();
+    window.location.assign("/api/auth/google");
   };
 
   if (loading) {

@@ -30,14 +30,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "Campus Connect",
-    title: "Campus Connect",
+    siteName: "Ved Hub",
+    title: "Ved Hub",
     description:
       "A premium college community platform for events, social networking, and collaboration.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Campus Connect",
+    title: "Ved Hub",
     description:
       "A premium college community platform for events, social networking, and collaboration.",
   },

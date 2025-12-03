@@ -50,7 +50,7 @@ export default async function ProfilePage({
   const levelData = calculateLevel(profile.stats?.total_xp || 0);
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Header Section */}
       <ProfileHeader
         profile={profile as any}
@@ -79,22 +79,22 @@ export default async function ProfilePage({
 
             {/* Tabs Navigation */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="w-full justify-start bg-transparent border-b border-white/10 p-0 h-auto rounded-none mb-6">
+              <TabsList className="w-full justify-start bg-transparent border-b border-border p-0 h-auto rounded-none mb-6">
                 <TabsTrigger
                   value="overview"
-                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-[#a970ff] data-[state=active]:bg-transparent data-[state=active]:text-white text-muted-foreground hover:text-white transition-colors"
+                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
                   value="projects"
-                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-[#a970ff] data-[state=active]:bg-transparent data-[state=active]:text-white text-muted-foreground hover:text-white transition-colors"
+                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Projects
                 </TabsTrigger>
                 <TabsTrigger
                   value="about"
-                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-[#a970ff] data-[state=active]:bg-transparent data-[state=active]:text-white text-muted-foreground hover:text-white transition-colors"
+                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground hover:text-foreground transition-colors"
                 >
                   About
                 </TabsTrigger>

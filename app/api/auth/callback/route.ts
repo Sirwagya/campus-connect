@@ -49,23 +49,18 @@ export async function GET(request: Request) {
 
     // Store tokens in database (upsert to create user if needed)
     // Use supabaseAdmin to bypass RLS policies for insert/update
+    // Store tokens in database
+    // The user row is created by the trigger on auth.users insert
+    // We just need to update the tokens for the Gmail integration
     const { error: updateError } = await supabaseAdmin
       .from('users')
-      .upsert(
-        {
-          id: user.id,
-          email: userEmail,
-          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-          avatar_url: user.user_metadata?.avatar_url || null,
-          google_access_token: providerToken,
-          google_refresh_token: providerRefreshToken,
-          token_expiry: tokenExpiry,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'id',
-        }
-      )
+      .update({
+        google_access_token: providerToken,
+        google_refresh_token: providerRefreshToken,
+        token_expiry: tokenExpiry,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
 
     if (updateError) {
       console.error('Failed to store tokens:', updateError)

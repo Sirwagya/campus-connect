@@ -21,20 +21,21 @@ import {
   Bell,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { getDashboardData } from "./actions/dashboard";
 import { format } from "date-fns";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 
 export default async function Home() {
-  const { featuredEvents, announcements, trendingFeed, userRole } =
+  const { featuredEvents, announcements, trendingFeed, userName } =
     await getDashboardData();
 
   return (
-    <div className="min-h-screen bg-[#0E0E10] text-white pb-20 font-sans selection:bg-[#6C4BF4] selection:text-white">
+    <div className="min-h-screen bg-background text-foreground pb-20 font-sans selection:bg-primary selection:text-white">
       {/* Hero Section - Spotify Artist Page Style */}
       <div className="relative h-[400px] w-full overflow-hidden">
         {/* Background Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#3A2CCB] via-[#6C4BF4] to-[#0E0E10] opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#3A2CCB] via-primary to-background opacity-90" />
 
         {/* Noise Texture */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
@@ -45,7 +46,7 @@ export default async function Home() {
         <div className="container max-w-7xl mx-auto px-4 md:px-8 h-full flex flex-col justify-end pb-32 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 w-fit mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <span className="text-xs font-bold tracking-wide text-white uppercase">
-              Welcome back, Sirwagya
+              Welcome back, {userName}
             </span>
           </div>
 
@@ -60,7 +61,7 @@ export default async function Home() {
         </div>
 
         {/* Bottom Fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0E0E10] to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </div>
 
       <div className="container max-w-7xl mx-auto px-4 md:px-8 -mt-8 relative z-20 space-y-16">
@@ -89,10 +90,12 @@ export default async function Home() {
                   <div className="bg-[#18181B] rounded-lg p-4 hover:bg-[#27272a] transition-all duration-300 ease-out group-hover:-translate-y-2 shadow-lg hover:shadow-[#6C4BF4]/20 border border-white/5 group-hover:border-white/10">
                     <div className="aspect-square w-full bg-[#27272a] rounded-md mb-4 relative overflow-hidden shadow-md">
                       {event.image_path ? (
-                        <img
+                        <Image
                           src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-banners/${event.image_path}`}
                           alt={event.title}
-                          className="object-cover w-full h-full"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-[#3A2CCB] to-[#6C4BF4] flex items-center justify-center">

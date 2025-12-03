@@ -28,7 +28,7 @@ export default async function FeedPage() {
       `
       *,
       user:users!posts_user_id_fkey(id, name, full_name, avatar_url, email),
-      likes:post_likes(user_id), 
+      likes:post_reactions(user_id), 
       comments:comments(count)
     `
     )
@@ -36,7 +36,12 @@ export default async function FeedPage() {
     .limit(10);
 
   if (error && (error.message || error.code)) {
-    console.error("Error fetching initial feed:", error.message, error.code, error.details);
+    console.error(
+      "Error fetching initial feed:",
+      error.message,
+      error.code,
+      error.details
+    );
   }
 
   // Process posts for initial state (similar to API)

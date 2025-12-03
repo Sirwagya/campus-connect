@@ -7,6 +7,7 @@ export interface DashboardData {
     announcements: Announcement[];
     trendingFeed: TrendingPost[];
     userRole: string | null;
+    userName: string;
 }
 
 interface FeaturedEvent {
@@ -56,6 +57,7 @@ export async function getDashboardData(): Promise<DashboardData> {
                 announcements: [],
                 trendingFeed: [],
                 userRole: null,
+                userName: "Student",
             };
         }
 
@@ -133,6 +135,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             announcements,
             trendingFeed,
             userRole: userRoleRes.data?.role || "student",
+            userName: user.user_metadata?.full_name || user.email?.split('@')[0] || "Student",
         };
     } catch (error) {
         console.error('[Dashboard] Error fetching data:', error);
@@ -141,6 +144,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             announcements: [],
             trendingFeed: [],
             userRole: null,
+            userName: "Student",
         };
     }
 }

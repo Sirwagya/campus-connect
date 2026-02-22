@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePresenceContext } from "./PresenceProvider";
 import { GlobalSearch } from "./search/GlobalSearch";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/Avatar";
+import { ProfileClickable } from "@/components/profile";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -222,10 +223,10 @@ export function Sidebar() {
       {/* Footer / User */}
       <div className="p-4 bg-black/40 backdrop-blur-xl border-t border-white/10">
         {user ? (
-          <Link
-            href={`/profile/${user.id}`}
+          <ProfileClickable
+            userId={user.id}
             className={cn(
-              "flex items-center gap-3 p-2 rounded-xl transition-colors cursor-pointer hover:bg-white/5 group",
+              "flex items-center gap-3 p-2 rounded-xl transition-colors cursor-pointer hover:bg-white/5 group w-full",
               isCollapsed && "justify-center"
             )}
           >
@@ -271,7 +272,7 @@ export function Sidebar() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </Link>
+          </ProfileClickable>
         ) : (
           !isCollapsed && (
             <div className="px-2 mb-4 text-sm text-white/40">Not signed in</div>

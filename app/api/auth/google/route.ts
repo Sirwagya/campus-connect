@@ -1,19 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
+    const cookieStore = await cookies();
+
+    // Create a response that we'll modify with cookies
+    let response = NextResponse.redirect(new URL("/login", request.url));
+
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
                 getAll() {
-                    return request.cookies.getAll();
+                    return cookieStore.getAll();
                 },
                 setAll(cookiesToSet) {
                     cookiesToSet.forEach(({ name, value, options }) => {
-                        request.cookies.set(name, value);
+                        cookieStore.set(name, value, options);
                     });
                 },
             },
@@ -23,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: `${requestUrl.origin}/auth/callback`,
+            redirectTo: `${requestUrl.origin}/api/auth/callback`,
             queryParams: {
                 access_type: "offline",
                 prompt: "consent",

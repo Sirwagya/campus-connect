@@ -2,7 +2,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Github, Trophy } from "lucide-react";
-import Link from "next/link";
+import { ProfileClickable } from "./ProfilePopoutProvider";
 
 interface StudentCardProps {
   student: {
@@ -19,7 +19,7 @@ interface StudentCardProps {
 
 export function StudentCard({ student }: StudentCardProps) {
   return (
-    <Link href={`/profile/${student.id}`}>
+    <ProfileClickable userId={student.id} className="block">
       <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
         <CardHeader className="flex flex-row items-center gap-4 pb-2">
           <Avatar className="h-12 w-12">
@@ -66,6 +66,6 @@ export function StudentCard({ student }: StudentCardProps) {
           )}
         </CardContent>
       </Card>
-    </Link>
+    </ProfileClickable>
   );
 }

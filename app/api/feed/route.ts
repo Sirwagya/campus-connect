@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
 
         if (error && (error.message || error.code)) {
             console.error("[Feed Fetch] Error:", error.message, error.code, error.details);
-            return NextResponse.json({ error: "Failed to fetch feed" }, { status: 500 });
+            // Return empty array instead of error to prevent UI issues
+            return NextResponse.json<FeedResponse>({
+                posts: [],
+                nextCursor: null
+            });
         }
 
         const rawPosts = (posts || []) as PostWithRelations[];

@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import Link from "next/link";
+import { ProfileClickable } from "@/components/profile";
 import { motion, AnimatePresence } from "framer-motion";
 import type { FeedPost, FeedUser } from "@/types/feed";
 
@@ -71,7 +72,7 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
       )}
     >
       <div className="flex gap-4">
-        <Link href={`/profile/${post.user_id}`}>
+        <ProfileClickable userId={post.user_id}>
           <Avatar className="cursor-pointer hover:opacity-80 transition-opacity h-11 w-11 border border-white/10 shadow-sm">
             <AvatarImage
               src={post.user?.avatar_url || undefined}
@@ -81,16 +82,16 @@ export function PostCard({ post, currentUserId, currentUser }: PostCardProps) {
               {post.user?.name?.[0] || post.user?.email?.[0] || "?"}
             </AvatarFallback>
           </Avatar>
-        </Link>
+        </ProfileClickable>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2 text-[15px]">
-              <Link
-                href={`/profile/${post.user_id}`}
+              <ProfileClickable
+                userId={post.user_id}
                 className="font-bold text-white hover:underline cursor-pointer hover:text-[#a970ff] transition-colors"
               >
                 {post.user?.full_name || post.user?.name || "Unknown"}
-              </Link>
+              </ProfileClickable>
               <span className="text-gray-500 text-sm">
                 @{post.user?.email?.split("@")[0] || "anonymous"}
               </span>

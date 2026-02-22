@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Loader2, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { ProfileClickable } from "@/components/profile";
 import type { FeedComment, FeedUser } from "@/types/feed";
 
 interface CommentListProps {
@@ -116,7 +117,7 @@ export function CommentList({
         <div className="space-y-4">
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
-              <Link href={`/profile/${comment.user_id}`}>
+              <ProfileClickable userId={comment.user_id}>
                 <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity">
                   <AvatarImage
                     src={comment.user?.avatar_url || undefined}
@@ -126,15 +127,15 @@ export function CommentList({
                     {comment.user?.name?.[0] || comment.user?.email?.[0] || "?"}
                   </AvatarFallback>
                 </Avatar>
-              </Link>
+              </ProfileClickable>
               <div className="flex-1 bg-muted/50 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
-                  <Link
-                    href={`/profile/${comment.user_id}`}
+                  <ProfileClickable
+                    userId={comment.user_id}
                     className="font-semibold text-sm hover:underline cursor-pointer"
                   >
                     {comment.user?.full_name || comment.user?.name || "Unknown"}
-                  </Link>
+                  </ProfileClickable>
                   <span className="text-xs text-muted-foreground">
                     {comment.created_at
                       ? formatDistanceToNow(new Date(comment.created_at), {

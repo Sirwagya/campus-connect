@@ -5,6 +5,8 @@ import { Composer } from "@/components/feed/Composer";
 import { PostList } from "@/components/feed/PostList";
 import { NewPostsBanner } from "@/components/feed/NewPostsBanner";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
+import { ActiveMembersWidget } from "@/components/feed/ActiveMembersWidget";
+import { AnnouncementsWidget } from "@/components/feed/AnnouncementsWidget";
 import { createClient } from "@/lib/supabase/client";
 import { normalizeFeedPost } from "@/lib/feed/normalize";
 import type {
@@ -88,11 +90,6 @@ export default function ClientFeed({
           if (!("id" in newRecord) || !newRecord.id) return;
           const newPostId = newRecord.id;
 
-          // Check if we already have this post (e.g. from optimistic update)
-          // Optimistic posts have 'temp-' IDs, so we might have a duplicate if we don't handle it.
-          // Ideally, we'd replace the temp post with the real one.
-          // For now, let's just fetch the full post details (to get user info) and prepend it.
-
           // Fetch the full post with user details
           const { data: fullPost } = await supabase
             .from("posts")
@@ -109,15 +106,11 @@ export default function ClientFeed({
 
           if (fullPost) {
             setPosts((prev) => {
-              // Filter out optimistic post if it matches (hard to know without correlation ID,
-              // but we can filter by content/user if needed, or just prepend and let React key handle it if we replace)
-              // Simple approach: Prepend real post.
               const normalized = normalizeFeedPost(
                 fullPost as PostWithRelations,
                 user.id
               );
 
-              // Remove optimistic version if the ID differs but content/user match
               const filtered = prev.filter(
                 (existing) =>
                   !existing.isOptimistic ||
@@ -142,29 +135,69 @@ export default function ClientFeed({
   };
 
   return (
-    <div className="w-full max-w-[720px] mx-auto min-h-screen pb-20">
+    <div className="w-full max-w-7xl mx-auto min-h-screen pb-20">
       {/* New Posts Banner */}
       <NewPostsBanner onRefresh={refreshFeed} />
 
       <DashboardHero />
 
-      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-6 py-4 mb-6">
-        <h1 className="text-xl font-light tracking-tight text-white">
-          {isRefreshing ? "Refreshing..." : "Latest Updates"}
-        </h1>
+      {/* Grid Layout: Sidebar + Main Feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 lg:px-6">
+        {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
+        <aside className="hidden lg:block lg:col-span-3 space-y-4 sticky top-20 self-start">
+          <ActiveMembersWidget maxItems={6} />
+          <AnnouncementsWidget maxItems={3} />
+        </aside>
+
+        {/* Main Feed */}
+        <main className="lg:col-span-9 w-full max-w-[720px] mx-auto lg:mx-0">
+          <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/10 px-6 py-4 mb-6 -mx-4 lg:mx-0 lg:rounded-2xl">
+            <h1 className="text-xl font-light tracking-tight text-white">
+              {isRefreshing ? "Refreshing..." : "Latest Updates"}
+            </h1>
+          </div>
+
+          <div className="space-y-6">
+            <Composer user={user} onPostCreated={handlePostCreated} />
+
+            <PostList
+              posts={posts}
+              currentUserId={user.id}
+              currentUser={user}
+              onLoadMore={loadMore}
+              hasMore={hasMore}
+              loading={loading}
+            />
+          </div>
+        </main>
       </div>
 
-      <div className="px-4 md:px-0 space-y-6">
-        <Composer user={user} onPostCreated={handlePostCreated} />
-
-        <PostList
-          posts={posts}
-          currentUserId={user.id}
-          currentUser={user}
-          onLoadMore={loadMore}
-          hasMore={hasMore}
-          loading={loading}
-        />
+      {/* Mobile Widgets - Shown only on mobile as a collapsible section */}
+      <div className="lg:hidden px-4 mt-8 space-y-4">
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer list-none bg-white/[0.03] rounded-2xl px-4 py-3 border border-white/5">
+            <span className="text-sm font-medium text-white">
+              Active Members & Announcements
+            </span>
+            <svg
+              className="w-5 h-5 text-white/50 transition-transform group-open:rotate-180"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </summary>
+          <div className="mt-4 space-y-4">
+            <ActiveMembersWidget maxItems={5} />
+            <AnnouncementsWidget maxItems={3} />
+          </div>
+        </details>
       </div>
     </div>
   );

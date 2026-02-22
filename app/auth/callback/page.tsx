@@ -3,8 +3,9 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { Suspense } from "react";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const hasRun = useRef(false);
 
@@ -19,62 +20,104 @@ export default function AuthCallbackPage() {
 
     const handleCallback = async () => {
       try {
-        console.log("=== Processing Auth Callback (once) ===");
+        console.log("=== Processing Auth Callback ===");
 
-        // Wait for Supabase to process the OAuth callback
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Give Supabase time to process the OAuth callback
+        // Supabase client automatically handles the hash fragment
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
+        // Listen for auth state change
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log("Auth event:", event);
+
+          if (event === "SIGNED_IN" && session) {
+            console.log("Session established:", session.user.email);
+
+            // Validate domain
+            const email = session.user.email;
+            const allowedDomain = "vedamsot.org";
+
+            if (!email || !email.endsWith(`@${allowedDomain}`)) {
+              console.error("Invalid domain:", email);
+              await supabase.auth.signOut();
+              subscription.unsubscribe();
+              router.replace("/login?error=invalid_domain");
+              return;
+            }
+
+            console.log("✅ Domain validated, redirecting to feed...");
+            subscription.unsubscribe();
+            window.location.href = "/feed";
+          }
+        });
+
+        // Also check for existing session (in case event already fired)
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
 
-        if (sessionError || !session) {
-          console.error("No session:", sessionError);
+        if (session) {
+          console.log("Existing session found:", session.user.email);
+
+          // Validate domain
+          const email = session.user.email;
+          const allowedDomain = "vedamsot.org";
+
+          if (!email || !email.endsWith(`@${allowedDomain}`)) {
+            console.error("Invalid domain:", email);
+            await supabase.auth.signOut();
+            router.replace("/login?error=invalid_domain");
+            return;
+          }
+
+          console.log("✅ Session valid, redirecting to feed...");
+          window.location.href = "/feed";
+          return;
+        }
+
+        // Wait for session with timeout
+        setTimeout(() => {
+          if (!hasRun.current) return;
+          console.log("Session timeout - redirecting to login");
           router.replace("/login?error=no_session");
-          return;
-        }
-
-        const email = session.user.email;
-        const allowedDomain = "vedamsot.org";
-
-        console.log("Session found for:", email);
-
-        // Validate domain
-        if (!email || !email.endsWith(`@${allowedDomain}`)) {
-          console.error("Invalid domain:", email);
-          await supabase.auth.signOut();
-          router.replace("/login?error=invalid_domain");
-          return;
-        }
-
-        console.log("✅ Domain validated");
-        console.log("✅ Redirecting to home (once)...");
-
-        // Use window.location for hard redirect to break any loops
-        window.location.href = "/";
+        }, 5000);
       } catch (err) {
         console.error("Callback error:", err);
-        if (!hasRun.current) {
-          router.replace("/login?error=unexpected");
-        }
+        router.replace("/login?error=unexpected");
       }
     };
 
     handleCallback();
-  }, []); // Empty dependency array
+  }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white text-black">
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="text-center space-y-4">
         <div className="text-lg font-medium">Completing authentication...</div>
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-white/60">
           Please wait, you will be redirected shortly.
         </div>
         <div className="mt-4">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-black text-white">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

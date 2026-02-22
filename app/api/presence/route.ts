@@ -5,7 +5,7 @@ import { validateBody, updatePresenceSchema } from '@/lib/validations';
 // GET /api/presence - Get online users or specific user's presence
 export async function GET(request: Request) {
   const supabase = await createClient();
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -52,28 +52,55 @@ export async function GET(request: Request) {
   }
 
   // Get all online users (for general presence display)
-  const { data, error } = await supabase
-    .from('presence')
-    .select(`
-      *,
-      user:users(id, full_name, avatar_url),
-      profile:profiles(username, display_name, avatar_url)
-    `)
-    .neq('status', 'offline')
-    .order('updated_at', { ascending: false })
-    .limit(50);
+  try {
+    const { data: presenceData, error: presenceError } = await supabase
+      .from('presence')
+      .select('*')
+      .neq('status', 'offline')
+      .order('updated_at', { ascending: false })
+      .limit(50);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (presenceError) {
+      console.error('Presence fetch error:', presenceError);
+      return NextResponse.json({ data: [] });
+    }
+
+    if (!presenceData || presenceData.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
+    // Fetch user data separately
+    const userIds = presenceData.map(p => p.user_id);
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, full_name, avatar_url')
+      .in('id', userIds);
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url')
+      .in('id', userIds);
+
+    const userMap = new Map(users?.map(u => [u.id, u]) || []);
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+    const enrichedData = presenceData.map(p => ({
+      ...p,
+      user: userMap.get(p.user_id) || null,
+      profile: profileMap.get(p.user_id) || null,
+    }));
+
+    return NextResponse.json({ data: enrichedData });
+  } catch (error) {
+    console.error('Presence API error:', error);
+    return NextResponse.json({ data: [] });
   }
-
-  return NextResponse.json({ data });
 }
 
 // POST /api/presence - Update current user's presence
 export async function POST(request: Request) {
   const supabase = await createClient();
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -117,7 +144,7 @@ export async function POST(request: Request) {
 // DELETE /api/presence - Set user offline (on logout/disconnect)
 export async function DELETE() {
   const supabase = await createClient();
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

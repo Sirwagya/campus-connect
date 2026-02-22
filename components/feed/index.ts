@@ -6,3 +6,6 @@ export { Composer } from './Composer';
 export { ReactionButton, ReactionSummary } from './ReactionButton';
 export { NewPostsBanner } from './NewPostsBanner';
 export { UserMentionDropdown, useMentions } from './UserMention';
+export { ActiveMembersWidget } from './ActiveMembersWidget';
+export { AnnouncementsWidget } from './AnnouncementsWidget';
+

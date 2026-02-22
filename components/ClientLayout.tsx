@@ -12,6 +12,8 @@ import { useKeyboardShortcuts } from "@/hooks";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 
+import { ProfilePopoutProvider } from "@/components/profile";
+
 function LoadingSkeleton() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black">
@@ -48,18 +50,20 @@ export function ClientLayout({ children }: { children: ReactNode }) {
     <ToastProvider>
       <ConfirmDialogProvider>
         <PresenceProvider>
-          <KeyboardShortcuts />
-          <KeyboardShortcutsHelp />
-          <OfflineIndicator />
-          <div className="flex min-h-screen flex-col md:flex-row bg-black text-white">
-            <Sidebar />
-            <main className="flex-1 w-full min-w-0 pb-16 md:pb-0">
-              <div className="container mx-auto max-w-7xl p-4 md:p-8">
-                {children}
-              </div>
-            </main>
-            <BottomNav />
-          </div>
+          <ProfilePopoutProvider>
+            <KeyboardShortcuts />
+            <KeyboardShortcutsHelp />
+            <OfflineIndicator />
+            <div className="flex min-h-screen flex-col md:flex-row bg-black text-white">
+              <Sidebar />
+              <main className="flex-1 w-full min-w-0 pb-16 md:pb-0">
+                <div className="container mx-auto max-w-7xl p-4 md:p-8">
+                  {children}
+                </div>
+              </main>
+              <BottomNav />
+            </div>
+          </ProfilePopoutProvider>
         </PresenceProvider>
       </ConfirmDialogProvider>
     </ToastProvider>

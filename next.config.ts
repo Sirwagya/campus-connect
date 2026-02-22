@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
         hostname: '*.googleusercontent.com',
       },
       {
-        protocol: 'https', 
+        protocol: 'https',
         hostname: 'avatars.githubusercontent.com',
       },
       {
@@ -28,8 +28,17 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com https://ghchart.rshah.org",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.github.com",
+              "frame-src 'self' https://*.supabase.co",
+              "frame-ancestors 'none'",
+            ].join('; '),
           },
           {
             key: 'X-Content-Type-Options',

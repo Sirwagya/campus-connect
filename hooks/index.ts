@@ -84,3 +84,7 @@ export {
   useRecentItems,
   storage,
 } from './use-storage';
+
+// Spotify now playing
+export { useNowPlaying } from './use-now-playing';
+

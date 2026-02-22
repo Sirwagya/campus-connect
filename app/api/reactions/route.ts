@@ -4,51 +4,63 @@ import { validateBody, reactionSchema } from '@/lib/validations';
 
 // GET /api/reactions - Get reactions for a post or comment
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  
-  const { searchParams } = new URL(request.url);
-  const targetType = searchParams.get('targetType');
-  const targetId = searchParams.get('targetId');
+  try {
+    const supabase = await createClient();
 
-  if (!targetType || !targetId) {
-    return NextResponse.json({ error: 'targetType and targetId are required' }, { status: 400 });
-  }
+    const { searchParams } = new URL(request.url);
+    const targetType = searchParams.get('targetType');
+    const targetId = searchParams.get('targetId');
 
-  const { data, error } = await supabase
-    .from('reactions')
-    .select(`
-      *,
-      user:users(id, full_name, avatar_url),
-      profile:profiles(username, display_name, avatar_url)
-    `)
-    .eq('target_type', targetType)
-    .eq('target_id', targetId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  // Group by emoji
-  const grouped = (data || []).reduce((acc, reaction) => {
-    if (!acc[reaction.emoji]) {
-      acc[reaction.emoji] = [];
+    if (!targetType || !targetId) {
+      return NextResponse.json({ error: 'targetType and targetId are required' }, { status: 400 });
     }
-    acc[reaction.emoji].push(reaction);
-    return acc;
-  }, {} as Record<string, typeof data>);
 
-  return NextResponse.json({
-    data,
-    grouped,
-    total: data?.length || 0,
-  });
+    // Simplified query - just get reactions without joins
+    const { data, error } = await supabase
+      .from('reactions')
+      .select('*')
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Reactions error:', error);
+      // Return empty data instead of error to prevent infinite retries
+      return NextResponse.json({
+        data: [],
+        grouped: {},
+        total: 0,
+      });
+    }
+
+    // Group by emoji
+    const grouped = (data || []).reduce((acc, reaction) => {
+      if (!acc[reaction.emoji]) {
+        acc[reaction.emoji] = [];
+      }
+      acc[reaction.emoji].push(reaction);
+      return acc;
+    }, {} as Record<string, typeof data>);
+
+    return NextResponse.json({
+      data,
+      grouped,
+      total: data?.length || 0,
+    });
+  } catch (err) {
+    console.error('Reactions API error:', err);
+    return NextResponse.json({
+      data: [],
+      grouped: {},
+      total: 0,
+    });
+  }
 }
 
 // POST /api/reactions - Add a reaction
 export async function POST(request: Request) {
   const supabase = await createClient();
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -122,7 +134,7 @@ export async function POST(request: Request) {
 // DELETE /api/reactions - Remove a reaction
 export async function DELETE(request: Request) {
   const supabase = await createClient();
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

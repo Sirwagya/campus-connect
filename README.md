@@ -21,7 +21,7 @@ Campus Connect is a hackathon-built campus community hub crafted by the team. It
 - **Trending Feed** showing popular campus posts
 - Real-time updates and dynamic content
 
-### 👤 **Student Profiles (Anti-Gravity Theme)**
+### 👤 **Student Profiles**
 
 - **Portfolio-style profiles** with custom banners and avatars
 - **Gamified leveling system** with XP earned from coding platforms, events, and contributions

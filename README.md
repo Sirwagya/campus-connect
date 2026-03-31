@@ -117,10 +117,10 @@ Campus Connect uses a thin Next.js layer that fans out to Supabase for data, aut
 
 ```mermaid
 flowchart LR
-  User[Browser] -->|HTTPS / WebSocket| NextApp[Next.js 16 App Router\n(RSC + API Routes)]
-  NextApp -->|CRUD + Row Level Security| Supabase[(Supabase)\nPostgreSQL · Auth · Storage · Realtime]
-  NextApp --> Integrations[External Integrations\nGitHub • Gmail • Coding platforms]
-  NextApp --> Assets[Public Assets / CDN]
+  User[Browser] -->|HTTPS / WebSocket| NextApp["Next.js 16 App Router<br/>RSC + API Routes"]
+  NextApp -->|CRUD + Row Level Security| Supabase[(Supabase<br/>PostgreSQL / Auth / Storage / Realtime)]
+  NextApp --> Integrations["External Integrations<br/>GitHub / Gmail / Coding platforms"]
+  NextApp --> Assets["Public Assets / CDN"]
 ```
 
 Key flows:
@@ -132,7 +132,7 @@ Key flows:
 Feature interaction map:
 
 ```mermaid
-graph TD
+flowchart TD
   Events[(Events)]
   Feed[(Feed)]
   Spaces[(Spaces)]

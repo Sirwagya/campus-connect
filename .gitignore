@@ -44,4 +44,10 @@ yarn-error.log*
 .vercel
 
 # typescript
+.tsbuildinfo
 
+# editor / tooling
+.vscode
+
+# supabase cli temp files
+supabase/.temp/

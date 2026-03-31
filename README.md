@@ -1,12 +1,17 @@
 # Campus Connect 🎓
 
-A premium, Spotify + GitHub inspired college community platform built with Next.js 16, Supabase, and modern web technologies. Campus Connect unifies events, social networking, collaboration spaces, and professional portfolio features into one cohesive student hub.
+Campus Connect is a hackathon-built campus community hub crafted by the team. It unifies events, social networking, collaboration spaces, and student portfolios into one cohesive Next.js 16 + Supabase experience optimized for fast demos and real-world rollout.
 
 ![Campus Connect Banner](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js)
 ![Supabase](https://img.shields.io/badge/Supabase-Powered-green?style=for-the-badge&logo=supabase)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
 
 ## ✨ Features
+
+### 🚀 Hackathon scope
+
+- Built and iterated rapidly for a campus hackathon demo
+- Prioritized fast onboarding, visible engagement loops, and end-to-end event flows
 
 ### 🏠 **Home Dashboard**
 
@@ -105,6 +110,46 @@ A premium, Spotify + GitHub inspired college community platform built with Next.
 - **HackerRank**: Web scraping for badges
 - **CodeChef**: REST API for ratings
 - **Gmail**: OAuth + Google APIs for email sync
+
+## 🏗️ Architecture
+
+Campus Connect uses a thin Next.js layer that fans out to Supabase for data, auth, storage, and realtime updates, plus a small set of external enrichments.
+
+```mermaid
+flowchart LR
+  User[Browser] -->|HTTPS / WebSocket| NextApp[Next.js 16 App Router\n(RSC + API Routes)]
+  NextApp -->|CRUD + Row Level Security| Supabase[(Supabase)\nPostgreSQL · Auth · Storage · Realtime]
+  NextApp --> Integrations[External Integrations\nGitHub • Gmail • Coding platforms]
+  NextApp --> Assets[Public Assets / CDN]
+```
+
+Key flows:
+
+- **Auth**: Supabase Auth (Google OAuth + email/password) with sessions exposed to React Server Components and enforced via middleware.
+- **Events / Spaces / Feed**: Server Actions and API Routes read/write Supabase tables; realtime subscriptions push updates to active clients.
+- **Integrations**: Server-side fetchers call GitHub, Gmail, and coding-site APIs to enrich profiles and alerts; responses are cached in Supabase.
+
+Feature interaction map:
+
+```mermaid
+graph TD
+  Events[(Events)]
+  Feed[(Feed)]
+  Spaces[(Spaces)]
+  Profiles[(Profiles)]
+  Notifications[(Notifications)]
+
+  Events --> Notifications
+  Events --> Feed
+  Spaces --> Feed
+  Spaces --> Notifications
+  Profiles --> Feed
+  Profiles --> Notifications
+  Notifications --> Users[End Users]
+  Feed --> Users
+  Events --> Users
+  Spaces --> Users
+```
 
 ## 📂 Project Structure
 
